@@ -233,8 +233,12 @@ jobs:
           node-version: 22
       - name: Install FFmpeg
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=30 \
+            -o Acquire::https::Timeout=30
+          sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -n 1
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Build monorepo
