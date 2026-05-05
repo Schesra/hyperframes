@@ -5,7 +5,9 @@ import AdmZip from "adm-zip";
 const IGNORED_DIRS = new Set([".git", "node_modules", "dist", ".next", "coverage"]);
 const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db"]);
 const PUBLISH_CONTENT_TYPE = "application/zip";
-const PUBLISH_REQUEST_TIMEOUT_MS = 30_000;
+const PUBLISH_METADATA_TIMEOUT_MS = 30_000;
+const PUBLISH_UPLOAD_MIN_TIMEOUT_MS = 120_000;
+const PUBLISH_UPLOAD_BYTES_PER_SECOND = 500_000;
 
 export interface PublishArchiveResult {
   buffer: Buffer;
@@ -142,6 +144,13 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
   return text.trim() ? `${fallback}: ${text.trim().slice(0, 180)}` : fallback;
 }
 
+function uploadTimeoutMs(byteLength: number): number {
+  return Math.max(
+    PUBLISH_UPLOAD_MIN_TIMEOUT_MS,
+    Math.ceil((byteLength / PUBLISH_UPLOAD_BYTES_PER_SECOND) * 1000),
+  );
+}
+
 function shouldIgnoreSegment(segment: string): boolean {
   return segment.startsWith(".") || IGNORED_DIRS.has(segment) || IGNORED_FILES.has(segment);
 }
@@ -214,7 +223,7 @@ async function publishProjectArchiveDirect(
     method: "POST",
     body,
     headers,
-    signal: AbortSignal.timeout(PUBLISH_REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(uploadTimeoutMs(archive.buffer.byteLength)),
   });
 
   const payload = await readJson(response);
@@ -243,7 +252,7 @@ async function publishProjectArchiveStaged(
       "content-type": "application/json",
       heygen_route: "canary",
     },
-    signal: AbortSignal.timeout(PUBLISH_REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(PUBLISH_METADATA_TIMEOUT_MS),
   });
 
   if (uploadResponse.status === 404 || uploadResponse.status === 405) {
@@ -260,7 +269,7 @@ async function publishProjectArchiveStaged(
     method: "PUT",
     body: new Blob([archiveArrayBuffer(archive)], { type: stagedUpload.contentType }),
     headers: stagedUpload.uploadHeaders,
-    signal: AbortSignal.timeout(PUBLISH_REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(uploadTimeoutMs(archive.buffer.byteLength)),
   });
   if (!s3Response.ok) {
     throw new Error(await readErrorMessage(s3Response, "Failed to upload project archive"));
@@ -277,7 +286,7 @@ async function publishProjectArchiveStaged(
       "content-type": "application/json",
       heygen_route: "canary",
     },
-    signal: AbortSignal.timeout(PUBLISH_REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(uploadTimeoutMs(archive.buffer.byteLength)),
   });
 
   const completePayload = await readJson(completeResponse);
