@@ -894,6 +894,7 @@ export function StudioApp() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [previewIframe, setPreviewIframe] = useState<HTMLIFrameElement | null>(null);
   const [inspectedTimelineElementId, setInspectedTimelineElementId] = useState<string | null>(null);
+  const [compositionLoading, setCompositionLoading] = useState(true);
   const [previewDocumentVersion, setPreviewDocumentVersion] = useState(0);
   const refreshPreviewDocumentVersion = useCallback(() => {
     setPreviewDocumentVersion((version) => version + 1);
@@ -3169,7 +3170,7 @@ export function StudioApp() {
 
   const handlePreviewCanvasMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, options?: { preferClipAncestor?: boolean }) => {
-      if (!STUDIO_PREVIEW_SELECTION_ENABLED || captionEditMode) return;
+      if (!STUDIO_PREVIEW_SELECTION_ENABLED || captionEditMode || compositionLoading) return;
       const nextSelection = resolveDomSelectionFromPreviewPoint(e.clientX, e.clientY, {
         preferClipAncestor: options?.preferClipAncestor ?? false,
       });
@@ -3199,6 +3200,7 @@ export function StudioApp() {
     [
       applyDomSelection,
       captionEditMode,
+      compositionLoading,
       preloadAgentPromptSnippet,
       resolveDomSelectionFromPreviewPoint,
     ],
@@ -3206,7 +3208,7 @@ export function StudioApp() {
 
   const handlePreviewCanvasPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>, options?: { preferClipAncestor?: boolean }) => {
-      if (!STUDIO_PREVIEW_SELECTION_ENABLED || captionEditMode) {
+      if (!STUDIO_PREVIEW_SELECTION_ENABLED || captionEditMode || compositionLoading) {
         updateDomEditHoverSelection(null);
         return null;
       }
@@ -3217,7 +3219,12 @@ export function StudioApp() {
       updateDomEditHoverSelection(nextSelection);
       return nextSelection;
     },
-    [captionEditMode, resolveDomSelectionFromPreviewPoint, updateDomEditHoverSelection],
+    [
+      captionEditMode,
+      compositionLoading,
+      resolveDomSelectionFromPreviewPoint,
+      updateDomEditHoverSelection,
+    ],
   );
 
   const handlePreviewCanvasPointerLeave = useCallback(() => {
@@ -4085,6 +4092,7 @@ export function StudioApp() {
             inspectedTimelineElementId={inspectedTimelineElementId}
             timelineLayerChildCounts={timelineLayerChildCounts}
             onCompIdToSrcChange={setCompIdToSrc}
+            onCompositionLoadingChange={setCompositionLoading}
             onCompositionChange={(compPath) => {
               // Sync activeCompPath when user drills down via timeline double-click
               // or navigates back via breadcrumb — keeps sidebar + thumbnails in sync.
