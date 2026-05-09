@@ -4236,9 +4236,9 @@ export function StudioApp() {
                         projectId={projectId}
                         onDelete={renderQueue.deleteRender}
                         onClearCompleted={renderQueue.clearCompleted}
-                        onStartRender={async (format, quality, resolution) => {
+                        onStartRender={async (format, quality, resolution, fps) => {
                           await waitForPendingDomEditSaves();
-                          await renderQueue.startRender({ fps: 30, quality, format, resolution });
+                          await renderQueue.startRender({ fps, quality, format, resolution });
                         }}
                         isRendering={renderQueue.isRendering}
                       />

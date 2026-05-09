@@ -343,8 +343,9 @@ function createViteAdapter(dataDir: string, server: ViteDevServer): StudioApiAda
         bufferPromise = (async () => {
           const browser = await getSharedBrowser();
           if (!browser) return null;
-          const page = await browser.newPage();
+          let page: Awaited<ReturnType<typeof browser.newPage>> | null = null;
           try {
+            page = await browser.newPage();
             await page.setViewport({
               width: opts.width,
               height: opts.height,
@@ -415,13 +416,15 @@ function createViteAdapter(dataDir: string, server: ViteDevServer): StudioApiAda
                     ...(clip ? { clip } : {}),
                   },
             );
+            await page.close();
             return buf as Buffer;
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.warn(`[Studio thumbnail] Failed to generate ${opts.compPath}: ${message}`);
+          } catch (err) {
+            if (page) await page.close().catch(() => {});
+            console.warn(
+              "[Studio] Thumbnail generation failed:",
+              err instanceof Error ? err.message : err,
+            );
             return null;
-          } finally {
-            await page.close().catch(() => {});
           }
         })();
         _thumbnailInflight.set(cacheKey, bufferPromise);
