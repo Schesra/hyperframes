@@ -104,11 +104,37 @@ Every visible element must have continuous motion. A still image on a still back
 
 Check the storyboard's transition specification for this beat:
 
-- **CSS transition**: implement the exit animation (e.g., `y:-150, blur:30px, 0.33s power2.in`). The next composition handles its own entry.
-- **Shader transition**: no exit animation needed — the shader handles the blend. Available shaders: chromatic-radial-split, cinematic-zoom, cross-warp-morph, domain-warp-dissolve, flash-through-white, glitch, gravitational-lens, light-leak, ridged-burn, ripple-waves, sdf-iris, swirl-vortex, thermal-distortion, whip-pan. Install with `npx hyperframes add <name>`. The package handles WebGL init, capture, and GSAP integration — do not copy raw GLSL manually.
-- **Hard cut**: no exit animation. The scene simply ends.
+- **CSS transition**: implement the exit animation (e.g., `y:-150, blur:30px, 0.33s power2.in`). The next composition handles its own entry. For 60+ CSS transition patterns with GSAP code, read `skills/hyperframes/references/transitions/catalog.md`.
+- **Shader transition**: GPU-accelerated WebGL effects between scenes. No exit animation needed — the shader handles the blend. To use shader transitions in the root `index.html`:
+  1. Add `class="scene"` to every beat host div:
+     ```html
+     <div id="beat-1" class="scene" data-composition-src="compositions/beat-1.html" ...></div>
+     <div id="beat-2" class="scene" data-composition-src="compositions/beat-2.html" ...></div>
+     ```
+  2. Load the shader-transitions CDN script in `<head>`:
+     ```html
+     <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+     ```
+  3. Call `HyperShader.init()` in the root `<script>` block (after your timeline):
+     ```js
+     window.HyperShader.init({
+       bgColor: "#000000",
+       scenes: ["beat-1", "beat-2", "beat-3", "beat-4", "beat-5"],
+       transitions: [
+         { time: 5.5, shader: "cross-warp-morph", duration: 0.6 },
+         { time: 10.0, shader: "cinematic-zoom", duration: 0.5 },
+         { time: 15.0, shader: "light-leak", duration: 0.7 },
+         { time: 20.0, shader: "glitch", duration: 0.4 },
+       ],
+       timeline: tl,
+     });
+     ```
 
-For all CSS transition types and their GSAP implementations, read `skills/hyperframes/references/transitions/catalog.md`.
+  Each scene div needs CSS: `position: absolute; inset: 0; overflow: hidden;` (the `.scene` class). The `time` values are absolute seconds where each transition starts. Scene count must be `transitions.length + 1`. The engine handles the GPU compositing during render automatically.
+
+  Available shaders: chromatic-radial-split, cinematic-zoom, cross-warp-morph, domain-warp-dissolve, flash-through-white, glitch, gravitational-lens, light-leak, ridged-burn, ripple-waves, sdf-iris, swirl-vortex, thermal-distortion, whip-pan.
+
+- **Hard cut**: no exit animation. The scene simply ends.
 
 ### 7. Asset cross-reference
 
