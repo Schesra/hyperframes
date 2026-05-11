@@ -46,6 +46,7 @@ import {
 } from "./player/components/timelineZoom";
 import {
   getTimelineToggleTitle,
+  isEditableTarget,
   shouldHandleTimelineToggleHotkey,
 } from "./utils/timelineDiscovery";
 import { buildFrameCaptureFilename, buildFrameCaptureUrl } from "./utils/frameCapture";
@@ -345,13 +346,6 @@ export function StudioApp() {
     },
     [toggleTimelineVisibility],
   );
-
-  useMountEffect(() => {
-    window.addEventListener("keydown", handleTimelineToggleHotkey);
-    return () => {
-      window.removeEventListener("keydown", handleTimelineToggleHotkey);
-    };
-  });
 
   const syncPreviewTimelineHotkey = useCallback(
     (iframe: HTMLIFrameElement | null) => {
@@ -995,34 +989,36 @@ export function StudioApp() {
     [activeCompPath, showToast, timelineElements],
   );
 
-  const handleDeleteKeyRef = useRef(handleTimelineElementDelete);
-  handleDeleteKeyRef.current = handleTimelineElementDelete;
+  const handleDeleteRef = useRef(handleTimelineElementDelete);
+  handleDeleteRef.current = handleTimelineElementDelete;
+  const handleToggleRef = useRef(handleTimelineToggleHotkey);
+  handleToggleRef.current = handleTimelineToggleHotkey;
 
   // eslint-disable-next-line no-restricted-syntax
   useEffect(() => {
-    function handleDeleteKey(event: KeyboardEvent) {
-      if (event.key !== "Delete" && event.key !== "Backspace") return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+    function handleAppKeyDown(event: KeyboardEvent) {
+      // Shift+T — toggle timeline
+      handleToggleRef.current(event);
 
-      const tag = (event.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || (event.target as HTMLElement)?.isContentEditable) {
-        return;
+      // Delete / Backspace — remove selected timeline element
+      if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target)
+      ) {
+        const { selectedElementId, elements } = usePlayerStore.getState();
+        if (!selectedElementId) return;
+        const element = elements.find((el) => (el.key ?? el.id) === selectedElementId);
+        if (!element) return;
+        event.preventDefault();
+        void handleDeleteRef.current(element);
       }
-
-      const { selectedElementId, elements } = usePlayerStore.getState();
-      if (!selectedElementId) return;
-
-      const element = elements.find(
-        (el) => (el.key ?? el.id) === selectedElementId,
-      );
-      if (!element) return;
-
-      event.preventDefault();
-      void handleDeleteKeyRef.current(element);
     }
 
-    window.addEventListener("keydown", handleDeleteKey);
-    return () => window.removeEventListener("keydown", handleDeleteKey);
+    window.addEventListener("keydown", handleAppKeyDown);
+    return () => window.removeEventListener("keydown", handleAppKeyDown);
   }, []);
 
   const handleBlockedTimelineEdit = useCallback(
