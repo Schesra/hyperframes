@@ -72,6 +72,7 @@ export function trackEvent(event: string, properties: EventProperties = {}): voi
     event,
     properties: {
       ...properties,
+      source: "cli",
       cli_version: VERSION,
       os: process.platform,
       arch: process.arch,
