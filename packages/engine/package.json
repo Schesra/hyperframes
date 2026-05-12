@@ -12,7 +12,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./shader-transitions": "./src/utils/shaderTransitions.ts"
+    "./shader-transitions": "./src/utils/shaderTransitions.ts",
+    "./alpha-blit": "./src/utils/alphaBlit.ts"
   },
   "scripts": {
     "build": "tsc",

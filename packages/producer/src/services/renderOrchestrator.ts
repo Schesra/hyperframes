@@ -102,6 +102,10 @@ import {
   createShaderTransitionWorkerPool,
   type ShaderTransitionWorkerPool,
 } from "./shaderTransitionWorkerPool.js";
+import {
+  createPngDecodeBlitWorkerPool,
+  type PngDecodeBlitWorkerPool,
+} from "./pngDecodeBlitWorkerPool.js";
 import { type CompiledComposition } from "./htmlCompiler.js";
 import { defaultLogger, type ProducerLogger } from "../logger.js";
 import { isPathInside } from "../utils/paths.js";
@@ -1554,6 +1558,17 @@ interface HdrCompositeContext {
   debugDumpEnabled: boolean;
   debugDumpDir: string | null;
   hdrPerf?: HdrPerfCollector;
+  /**
+   * Optional worker-threads pool for off-main-thread PNG decode + rgba8-over-
+   * rgb48le blit. When set, the layered-composite helpers dispatch DOM-layer
+   * decode/blit to the pool instead of running it inline on the calling
+   * thread. This pipelines Chrome's next CDP screenshot against the prior
+   * frame's (or scene's) decode+blit. hf#732 lever-4. Falls back to inline
+   * decode+blit when null/undefined; correctness is byte-equivalent across
+   * paths because the worker calls the same `decodePng` + `blitRgba8OverRgb48le`
+   * the inline path uses.
+   */
+  pngDecodeBlitPool?: PngDecodeBlitWorkerPool | null;
 }
 
 /**
@@ -2040,10 +2055,30 @@ export async function captureTransitionFrame(
   buffers.bufferB.fill(0);
   addHdrTiming(hdrPerf, "canvasClearMs", timingStart);
 
-  for (const [sceneBuf, sceneIds] of [
-    [buffers.bufferA, sceneAIds],
-    [buffers.bufferB, sceneBIds],
-  ] as const) {
+  // hf#732 lever-4: pipeline the two scenes' decode+blit work against each
+  // other (and against the next CDP screenshot). The per-scene loop body
+  // captures its DOM PNG and either dispatches decode+blit to the
+  // `pngDecodeBlitPool` (non-blocking, returns a Promise that re-attaches
+  // the scene buffer) or falls back to inline decode+blit on the calling
+  // thread (legacy path, no pool). Both scenes' promises are awaited at
+  // the end of the function so the captured frame's buffers are guaranteed
+  // ready before the caller dispatches the shader blend.
+  //
+  // The HDR layer blits stay synchronous on the calling thread — they're
+  // already cheap relative to the DOM-screenshot path and they need to
+  // complete before the buffer is transferred into the worker pool (the
+  // pool's blit composites the DOM RGBA over whatever pixels are already
+  // in the rgb48le buffer).
+  const pool = ctx.pngDecodeBlitPool ?? null;
+  type ScenePending = { promise: Promise<Buffer>; sceneIdsList: string[] };
+  const scenePromises: ScenePending[] = [];
+
+  const isSceneA: ReadonlyArray<readonly [Buffer, Set<string>, "A" | "B"]> = [
+    [buffers.bufferA, sceneAIds, "A"],
+    [buffers.bufferB, sceneBIds, "B"],
+  ];
+
+  for (const [sceneBuf, sceneIds, sceneTag] of isSceneA) {
     assertNotAborted();
     timingStart = Date.now();
     await session.page.evaluate((t: number) => {
@@ -2104,21 +2139,85 @@ export async function captureTransitionFrame(
     await removeDomLayerMask(session.page, hideIds);
     addHdrTiming(hdrPerf, "domMaskRemoveMs", timingStart);
 
-    try {
-      timingStart = Date.now();
-      const { data: domRgba } = decodePng(domPng);
-      addHdrTiming(hdrPerf, "domPngDecodeMs", timingStart);
-      timingStart = Date.now();
-      blitRgba8OverRgb48le(domRgba, sceneBuf, width, height, compositeTransfer);
-      addHdrTiming(hdrPerf, "domBlitMs", timingStart);
-    } catch (err) {
-      log.warn("DOM layer decode/blit failed; skipping overlay for transition scene", {
-        frameIndex: frameIdx,
-        sceneIds: Array.from(sceneIds),
-        error: err instanceof Error ? err.message : String(err),
-      });
+    const sceneIdsList = Array.from(sceneIds);
+    if (pool) {
+      // Pool path: kick off decode + blit asynchronously and store the
+      // promise. The ArrayBuffer of `sceneBuf` is detached on dispatch —
+      // we cannot touch it again until the promise resolves. The two
+      // scenes use disjoint buffers (A and B), so dispatching scene A's
+      // decode/blit while moving on to scene B's CDP work is safe.
+      const dispatch: Promise<Buffer> = (async () => {
+        try {
+          const result = await pool.run({
+            png: domPng,
+            dest: sceneBuf,
+            width,
+            height,
+            transfer: compositeTransfer,
+          });
+          if (hdrPerf) {
+            // Per-worker timings reported back from the pool reflect actual
+            // CPU time on the worker thread; rolling them into the same
+            // hdrPerf counters keeps perf-summary.json comparable to the
+            // inline path. The wall-clock cost on the orchestrator thread
+            // is effectively zero (postMessage round-trip).
+            hdrPerf.timings.domPngDecodeMs += result.decodeMs;
+            hdrPerf.timings.domBlitMs += result.blitMs;
+          }
+          return result.dest;
+        } catch (err) {
+          log.warn(
+            "DOM layer decode/blit pool task failed; falling back to inline for transition scene",
+            {
+              frameIndex: frameIdx,
+              scene: sceneTag,
+              sceneIds: sceneIdsList,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          );
+          // Best-effort: if the pool task rejected, the underlying
+          // ArrayBuffer may have been detached on the way out. We can't
+          // safely recover the scene buffer at this point — return a
+          // freshly-allocated zero buffer so the shader blend has
+          // something well-formed to read. The frame may show the wrong
+          // pixels but the render does not abort.
+          return Buffer.alloc(width * height * 6);
+        }
+      })();
+      scenePromises.push({ promise: dispatch, sceneIdsList });
+    } else {
+      // Inline path (no pool): same code shape as the pre-#732-lever-4
+      // implementation. Preserves byte-equivalence and serves as the
+      // fallback when the pool can't be spawned.
+      try {
+        timingStart = Date.now();
+        const { data: domRgba } = decodePng(domPng);
+        addHdrTiming(hdrPerf, "domPngDecodeMs", timingStart);
+        timingStart = Date.now();
+        blitRgba8OverRgb48le(domRgba, sceneBuf, width, height, compositeTransfer);
+        addHdrTiming(hdrPerf, "domBlitMs", timingStart);
+      } catch (err) {
+        log.warn("DOM layer decode/blit failed; skipping overlay for transition scene", {
+          frameIndex: frameIdx,
+          scene: sceneTag,
+          sceneIds: sceneIdsList,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      scenePromises.push({ promise: Promise.resolve(sceneBuf), sceneIdsList });
     }
   }
+
+  // Await both scene decode+blit promises before returning. On the inline
+  // path these are no-ops; on the pool path this is where the second
+  // scene's CDP-overlapped decode/blit drains. Re-assign buffers so the
+  // returned `CapturedTransitionFrame` references the re-attached views.
+  const [bufA, bufB] = await Promise.all([
+    scenePromises[0]?.promise ?? Promise.resolve(buffers.bufferA),
+    scenePromises[1]?.promise ?? Promise.resolve(buffers.bufferB),
+  ]);
+  buffers.bufferA = bufA;
+  buffers.bufferB = bufB;
 
   // `transitionCaptureMs` is the dual-scene capture cost only — the blend is
   // accounted for separately in `transitionShaderBlendMs`. Their sum is no
@@ -3606,6 +3705,7 @@ export async function executeRenderJob(
             // calls; no benefit from oversubscribing. Only allocated when
             // there are actually transition frames to blend.
             let shaderPool: ShaderTransitionWorkerPool | null = null;
+            let pngDecodeBlitPool: PngDecodeBlitWorkerPool | null = null;
             try {
               // Worker 0 reuses the main `domSession`; spawn the rest.
               for (let w = 0; w < workerCanvasesNeeded; w++) {
@@ -3643,12 +3743,47 @@ export async function executeRenderJob(
                 }
               }
 
+              // hf#732 lever-4: spawn the PNG decode + alpha-blit pool. Used by
+              // both `captureTransitionFrame` (per-scene DOM decode+blit, 2× per
+              // transition frame) and `compositeHdrFrame` (per-layer DOM
+              // decode+blit, 3-6× per normal layered frame). Sizing rationale:
+              // every DOM worker hits this pool every frame, so the pool wants
+              // to be at least as wide as the DOM-worker count — but the per-
+              // task work is short (~80ms) so we can amortize across more
+              // concurrent tasks. We size to `2× activeWorkerCount` capped to
+              // cpu count internally; this absorbs the 2× per-frame burst
+              // (transition scenes A+B fire simultaneously) without leaving
+              // workers idle. Skippable when the inline fallback is OK; the
+              // hybrid path always wants it on though so we don't gate by
+              // hasTransitions like the shader pool.
+              try {
+                pngDecodeBlitPool = await createPngDecodeBlitWorkerPool({
+                  size: Math.max(activeWorkerCount, activeWorkerCount * 2),
+                  log,
+                });
+              } catch (err) {
+                log.warn(
+                  "[Render] Failed to spawn PNG decode+blit worker pool; falling back to inline decode/blit",
+                  { error: err instanceof Error ? err.message : String(err) },
+                );
+                pngDecodeBlitPool = null;
+              }
+
               // Per-worker normal-frame canvas, allocated once and reused.
               // Worker 0 reuses `normalCanvas` (already allocated above).
               const workerCanvases: Buffer[] = [normalCanvas];
               for (let w = 1; w < activeWorkerCount; w++) {
                 workerCanvases.push(Buffer.alloc(bufSize));
               }
+
+              // hf#732 lever-4: hand the PNG decode+blit pool to the
+              // composite context. Both the transition path
+              // (`captureTransitionFrame` per-scene) and the normal-layered
+              // path (`compositeHdrFrame` per-layer) read this field; null
+              // means inline-decode-blit fallback. Set here (after the pool
+              // is spawned) rather than at context construction because the
+              // pool lifecycle is tied to the hybrid try/finally.
+              hdrCompositeCtx.pngDecodeBlitPool = pngDecodeBlitPool;
 
               // Per-worker transition scratch buffer RING. Each entry is a
               // triple (bufferA + bufferB + output); the DOM worker
@@ -3898,6 +4033,16 @@ export async function executeRenderJob(
                     err: err instanceof Error ? err.message : String(err),
                   });
                 });
+              }
+              if (pngDecodeBlitPool) {
+                await pngDecodeBlitPool.terminate().catch((err) => {
+                  log.warn("PNG decode+blit worker pool terminate failed", {
+                    err: err instanceof Error ? err.message : String(err),
+                  });
+                });
+                // Clear the context reference so downstream callers can't
+                // accidentally hit a terminated pool after teardown.
+                hdrCompositeCtx.pngDecodeBlitPool = null;
               }
             }
           } else {
