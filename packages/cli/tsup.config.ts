@@ -56,6 +56,15 @@ var __dirname = __hf_dirname(__filename);`,
   esbuildOptions(options) {
     options.alias = {
       "@hyperframes/producer": resolve(__dirname, "../producer/src/index.ts"),
+      // hf#677 follow-up: the producer's shader-blend worker imports from
+      // `@hyperframes/engine/shader-transitions` (subpath export) for a
+      // standalone TS file with zero internal imports — survives the
+      // worker_thread loader boundary. Mirror the alias here so tsup's
+      // bundler resolves it the same way as the producer's own build.mjs.
+      "@hyperframes/engine/shader-transitions": resolve(
+        __dirname,
+        "../engine/src/utils/shaderTransitions.ts",
+      ),
     };
     options.loader = { ...options.loader, ".browser.js": "text" };
   },

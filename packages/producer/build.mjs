@@ -21,6 +21,9 @@ const workspaceAliasPlugin = {
     build.onResolve({ filter: /^@hyperframes\/engine$/ }, () => ({
       path: resolve(scriptDir, "../engine/src/index.ts"),
     }));
+    build.onResolve({ filter: /^@hyperframes\/engine\/shader-transitions$/ }, () => ({
+      path: resolve(scriptDir, "../engine/src/utils/shaderTransitions.ts"),
+    }));
     build.onResolve({ filter: /^@hyperframes\/core$/ }, () => ({
       path: resolve(scriptDir, "../core/src/index.ts"),
     }));
@@ -54,6 +57,24 @@ await Promise.all([
     sourcemap: true,
     entryPoints: ["src/server.ts"],
     outfile: "dist/public-server.js",
+  }),
+  // Shader-blend worker (hf#677 follow-up). Loaded by
+  // `shaderTransitionWorkerPool.createShaderTransitionWorkerPool` via
+  // `new Worker(<path>)`. The pool probes for the `.js` build first,
+  // falling back to the in-tree `.ts` source under tsx in dev. Must be
+  // a separate entry point so it's bundled into a standalone worker
+  // module — `new Worker(...)` cannot share the parent module graph.
+  build({
+    bundle: true,
+    platform: "node",
+    target: "node22",
+    format: "esm",
+    external: ["puppeteer", "esbuild", "postcss"],
+    plugins: [workspaceAliasPlugin],
+    minify: false,
+    sourcemap: true,
+    entryPoints: ["src/services/shaderTransitionWorker.ts"],
+    outfile: "dist/services/shaderTransitionWorker.js",
   }),
 ]);
 

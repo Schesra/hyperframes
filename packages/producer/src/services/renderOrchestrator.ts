@@ -98,6 +98,10 @@ import { randomUUID } from "crypto";
 import { freemem } from "os";
 import { fileURLToPath } from "url";
 import { createFileServer, type FileServerHandle, VIRTUAL_TIME_SHIM } from "./fileServer.js";
+import {
+  createShaderTransitionWorkerPool,
+  type ShaderTransitionWorkerPool,
+} from "./shaderTransitionWorkerPool.js";
 import { type CompiledComposition } from "./htmlCompiler.js";
 import { defaultLogger, type ProducerLogger } from "../logger.js";
 import { isPathInside } from "../utils/paths.js";
@@ -401,6 +405,7 @@ type HdrPerfTimingKey =
   | "canvasClearMs"
   | "normalCompositeMs"
   | "transitionCompositeMs"
+  | "transitionShaderBlendMs"
   | "encoderWriteMs"
   | "hdrVideoReadDecodeMs"
   | "hdrVideoTransferMs"
@@ -440,6 +445,7 @@ function createHdrPerfCollector(): HdrPerfCollector {
       canvasClearMs: 0,
       normalCompositeMs: 0,
       transitionCompositeMs: 0,
+      transitionShaderBlendMs: 0,
       encoderWriteMs: 0,
       hdrVideoReadDecodeMs: 0,
       hdrVideoTransferMs: 0,
@@ -479,6 +485,10 @@ function finalizeHdrPerf(perf: HdrPerfCollector): HdrPerfSummary {
   avgMs.normalCompositeMs = averageTiming(perf.timings.normalCompositeMs, perf.normalFrames);
   avgMs.transitionCompositeMs = averageTiming(
     perf.timings.transitionCompositeMs,
+    perf.transitionFrames,
+  );
+  avgMs.transitionShaderBlendMs = averageTiming(
+    perf.timings.transitionShaderBlendMs,
     perf.transitionFrames,
   );
 
@@ -1835,6 +1845,11 @@ async function compositeHdrFrame(
 // against their own browser concurrently.
 
 interface LayeredTransitionBuffers {
+  // Mutable fields: the hf#677 shader-pool path swaps these references
+  // after each transferList round-trip with the worker thread. The
+  // underlying memory is the same; the Buffer headers are fresh views
+  // over the re-attached ArrayBuffers. The legacy synchronous path
+  // never reassigns these.
   bufferA: Buffer;
   bufferB: Buffer;
   output: Buffer;
@@ -1934,6 +1949,16 @@ export async function processLayeredNormalFrame(
  * @param nativeHdrIds - Set of HDR element ids; passed to mask helpers so HDR
  *                       elements stay inline-hidden behind the screenshot
  *                       (their pixels arrive via `blitHdrVideoLayer` etc.).
+ * @param shaderPool - Optional Node `worker_threads` pool to which the
+ *                     per-pixel shader-blend is dispatched (hf#677 follow-up
+ *                     to close the JS event-loop ceiling). When provided,
+ *                     bufferA/bufferB/output ArrayBuffers are detached via
+ *                     `transferList`, blended on a Worker, and transferred
+ *                     back; the function reassigns the fields on `buffers`
+ *                     to the returned Buffer views before returning. When
+ *                     omitted (e.g. legacy sequential path / single-worker
+ *                     SDR / HDR fallback), the blend runs synchronously on
+ *                     the calling thread — bit-for-bit identical output.
  */
 export async function processLayeredTransitionFrame(
   session: CaptureSession,
@@ -1945,6 +1970,7 @@ export async function processLayeredTransitionFrame(
   buffers: LayeredTransitionBuffers,
   assertNotAborted: () => void,
   nativeHdrIds: Set<string>,
+  shaderPool?: ShaderTransitionWorkerPool | null,
 ): Promise<void> {
   const {
     log,
@@ -2077,8 +2103,41 @@ export async function processLayeredTransitionFrame(
     }
   }
 
-  const transitionFn: TransitionFn = TRANSITIONS[transition.shader] ?? crossfade;
-  transitionFn(buffers.bufferA, buffers.bufferB, buffers.output, width, height, progress);
+  // Shader-blend dispatch. When a `shaderPool` is provided (hf#677 follow-up
+  // for the JS event-loop ceiling), the per-pixel blend runs on a Node
+  // `worker_threads` Worker via zero-copy `transferList`. The pool
+  // detaches the bufferA/B/output ArrayBuffers, runs the blend, and
+  // transfers them back; we reattach the returned Buffers onto the
+  // caller's `buffers` slot so the next iteration of the worker's frame
+  // loop sees the same shape.
+  //
+  // Without a pool, the blend runs synchronously on the main thread — the
+  // legacy path. Both branches produce byte-identical output because the
+  // worker imports the same `TRANSITIONS` table from `@hyperframes/engine`.
+  if (shaderPool) {
+    const blendStart = Date.now();
+    const result = await shaderPool.run({
+      shader: transition.shader,
+      bufferA: buffers.bufferA,
+      bufferB: buffers.bufferB,
+      output: buffers.output,
+      width,
+      height,
+      progress,
+    });
+    // The originals are detached; swap in the transferred-back views so
+    // the caller's `LayeredTransitionBuffers` stay valid for the next
+    // frame. Same underlying memory, fresh Buffer headers.
+    buffers.bufferA = result.bufferA;
+    buffers.bufferB = result.bufferB;
+    buffers.output = result.output;
+    addHdrTiming(hdrPerf, "transitionShaderBlendMs", blendStart);
+  } else {
+    const blendStart = Date.now();
+    const transitionFn: TransitionFn = TRANSITIONS[transition.shader] ?? crossfade;
+    transitionFn(buffers.bufferA, buffers.bufferB, buffers.output, width, height, progress);
+    addHdrTiming(hdrPerf, "transitionShaderBlendMs", blendStart);
+  }
   addHdrTiming(hdrPerf, "transitionCompositeMs", transitionTimingStart);
 }
 
@@ -3464,6 +3523,20 @@ export async function executeRenderJob(
           if (hybridEligible) {
             const workerSessions: CaptureSession[] = [];
             const workerCanvasesNeeded = Math.max(0, layeredWorkerCount - 1);
+
+            // hf#677 follow-up: spawn a worker_threads pool for the per-pixel
+            // shader-blend. The prior hf#732 commit parallelized DOM-session
+            // work across `layeredWorkerCount` browsers, but the JS shader
+            // call at the tail of `processLayeredTransitionFrame` still
+            // executed on the Node main event loop — six DOM workers all
+            // firing `TRANSITIONS[shader](...)` saturated the single thread
+            // and the worker-count sweep flattened after w=2. Moving the
+            // blend onto `worker_threads` removes that ceiling. Pool size
+            // matches `layeredWorkerCount` (clamped to CPU count inside
+            // the pool) so each DOM worker has a CPU peer for its blend
+            // calls; no benefit from oversubscribing. Only allocated when
+            // there are actually transition frames to blend.
+            let shaderPool: ShaderTransitionWorkerPool | null = null;
             try {
               // Worker 0 reuses the main `domSession`; spawn the rest.
               for (let w = 0; w < workerCanvasesNeeded; w++) {
@@ -3481,6 +3554,25 @@ export async function executeRenderJob(
 
               const sessions: CaptureSession[] = [domSession, ...workerSessions];
               const activeWorkerCount = sessions.length;
+
+              // Spawn the shader-blend pool now that we know the actual
+              // DOM-worker count. Skipping when there are no transitions
+              // avoids ~10–50ms × N worker spawn cost on the SDR
+              // non-transition fast path.
+              if (hasTransitions) {
+                try {
+                  shaderPool = await createShaderTransitionWorkerPool({
+                    size: activeWorkerCount,
+                    log,
+                  });
+                } catch (err) {
+                  log.warn(
+                    "[Render] Failed to spawn shader-blend worker pool; falling back to inline shader blend",
+                    { error: err instanceof Error ? err.message : String(err) },
+                  );
+                  shaderPool = null;
+                }
+              }
 
               // Per-worker normal-frame canvas, allocated once and reused.
               // Worker 0 reuses `normalCanvas` (already allocated above).
@@ -3546,6 +3638,7 @@ export async function executeRenderJob(
                       myTransitionBuffers,
                       assertNotAborted,
                       nativeHdrIds,
+                      shaderPool,
                     );
                     await writeEncoded(i, myTransitionBuffers.output);
                   } else {
@@ -3581,6 +3674,13 @@ export async function executeRenderJob(
               for (const session of workerSessions) {
                 await closeCaptureSession(session).catch((err) => {
                   log.warn("Hybrid worker session close failed", {
+                    err: err instanceof Error ? err.message : String(err),
+                  });
+                });
+              }
+              if (shaderPool) {
+                await shaderPool.terminate().catch((err) => {
+                  log.warn("Shader-blend worker pool terminate failed", {
                     err: err instanceof Error ? err.message : String(err),
                   });
                 });
