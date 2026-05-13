@@ -22,8 +22,7 @@
     }
   },
   "publishConfig": {
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -32,7 +31,8 @@
         "require": "./dist/index.cjs"
       }
     },
-    "access": "public"
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "scripts": {
     "build": "tsup",

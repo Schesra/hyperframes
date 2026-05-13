@@ -62,8 +62,7 @@
     "./schemas/registry-item.json": "./schemas/registry-item.json"
   },
   "publishConfig": {
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",
@@ -109,7 +108,8 @@
       "./schemas/registry.json": "./schemas/registry.json",
       "./schemas/registry-item.json": "./schemas/registry-item.json"
     },
-    "access": "public"
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "scripts": {
     "build": "bun run build:hyperframes-runtime && tsc",
