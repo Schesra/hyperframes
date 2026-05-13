@@ -12,11 +12,42 @@ Read these before generating options — they define the rules your options must
 - [../visual-styles.md](../visual-styles.md)
 - [beat-direction.md](beat-direction.md)
 
+## Using brief answers
+
+If the Brief step (SKILL.md) gathered answers, use them to constrain picker generation:
+
+| Brief answer | How it constrains the picker |
+|---|---|
+| **Audience** | Architecture density and type scale. Developers → monospace accents, data-dense, tight spacing. Executives → large type, breathable layouts. Consumers → bold, kinetic, visual-first. |
+| **Emotion** | Mood board clustering. Don't spread boards across the full emotional spectrum — cluster them around the target emotion with meaningful variations within that zone. |
+| **Brand assets** | If the user has existing colors/fonts/logo: palettes must derive from their brand colors (generate complementary variations, not replacements). Type pairings must include their font. Architecture previews should incorporate their logo or product imagery. If no assets: full creative freedom. |
+| **Light/dark** | Palette polarity. If specified, all palettes should respect it — don't waste 3 of 6 slots on the wrong polarity. |
+| **Surface** | Architecture layout and motion energy. Social → vertical-friendly, large text floors (24px+ body), high energy. Website hero → landscape, ambient/looping. Presentation → widescreen, structured hierarchy. |
+| **Key takeaway** | Architecture focal hierarchy. The takeaway should be the most prominent element in every architecture preview — biggest type, strongest contrast, most visual weight. |
+
+If no brief was gathered (user jumped straight to picker, or request was specific enough to skip), generate from the prompt alone.
+
 ## Building the picker
 
-1. Generate options **deeply contextual to the user's prompt**. Every category — not just architectures — must reflect the specific product, brand, audience, and mood. Generic options that could appear on any picker are a failure.
+1. Generate options **deeply contextual to the user's prompt and brief answers**. Every category — not just architectures — must reflect the specific product, brand, audience, and mood. Generic options that could appear on any picker are a failure.
 
    **Mood boards** — as many as the creative space warrants (4-8). Every board must tell a different STORY about the brand, not just reshuffle the same elements. Ask: "what are the genuinely different ways to position this product?" A cat food brand might be: playful chaos, premium positioning, comfort/cozy, social-native, flavor showcase, humor-led, sensory/appetizing. Each is a different narrative, not a different font on the same layout.
+
+   **Verbalized sampling — apply all of these when generating boards:**
+
+   1. **Probability awareness:** Generate 8-10 boards. For each, estimate how likely you were to produce it (high/mid/low mode). Keep at least 2 low-mode boards in the final set. The boards you almost didn't generate are often the most interesting.
+
+   2. **Creative modes:** Ensure boards come from genuinely different creative modes — not just color swaps. At least one board should be: formally rigorous (Swiss grid, strict hierarchy), one emotionally driven (the feeling before the content), one unconventional (breaks an assumption in the brief), one speculative (what if the brand was something else entirely?).
+
+   3. **Optimize for different things:** At least one board should optimize for visual impact over readability, one for data density over aesthetics, one for emotional resonance over information. These competing objectives produce boards that look fundamentally different.
+
+   4. **Anti-mode-collapse check:** After generating all boards, verify no two follow the same template. If two boards are "dark bg + colored accent + big stat + small labels" with different colors, one is redundant. Every board must differ on at least 2 of: layout structure, visual metaphor, density level, typography approach, color strategy.
+
+   5. **The unlikely-but-valid board:** After your main set, generate 1 additional board that a typical model would almost never produce for this brief. Describe WHY it's atypical. Include it if it's genuinely interesting; discard if it's just weird. The act of generating it breaks you out of the local optimum.
+
+   6. **Reasoning paths:** For the 2 most different boards, briefly note the reasoning path that led there. "I started from the audience (investors want data density) → mission control aesthetic → monospace everything" vs. "I started from the emotion (awe) → cinematic title sequence → one giant number, nothing else." Different starting points produce different destinations.
+
+   If every board feels safe, you're mode-collapsed — push until at least one makes you uncomfortable.
 
    **Architectures** — one per mood board minimum, each visually distinct. Use `{{prompt_headline}}` and `{{prompt_sub}}` tokens. If the user provided media assets, use them as background images (use `url(path)` without quotes — single quotes inside `style='...'` break the attribute).
 
@@ -38,7 +69,7 @@ Each architecture object must include a `preview_html` field — the HTML that r
 
 **Every token must be used.** Apply `{{cr}}` to all cards, buttons, and containers. Apply `{{shadow}}` to elevated elements (cards, buttons, code blocks). Apply `{{pad}}` and `{{gap}}` to control spacing. If a token isn't used in the preview_html, that option will have no visible effect.
 
-**Density matters.** Each architecture preview must include 15+ distinct elements to give the user a real sense of the layout. Include: headline, subhead, body paragraph, label/overline, stat with number, secondary stat, quote/testimonial, attribution, card with title+body, second card (different treatment), code/command block, primary button, secondary button, list or tags, accent divider/rule, and a data element (table row, progress bar, or chart).
+**Density should match the concept.** A data-dense blueprint needs many elements. An extreme-negative-space direction needs 3-4. The preview should look like a frame from the actual video, not a UI component showcase. If every architecture has the same element list in the same order, the concepts are visually identical despite different colors — that's the problem.
 
 Optionally include `components` (component styling rules) and `dos` (do's and don'ts) as strings — these appear in the generated design.md.
 
@@ -111,7 +142,7 @@ This makes previews contextual — the user sees their own content styled, not g
 
 ## Serving and user selection
 
-4. Serve the file: `cd <project-dir> && python3 -m http.server 8723 &` (use port 8723 or any unused port above 8000; if the curl check fails, try the next port). Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8723/.hyperframes/pick-design.html` — only share the link if it returns 200. Do NOT use `npx hyperframes preview` for the picker — it blocks. Only start the HTTP server from the main conversation thread. If you are running as a dispatched task or subagent, return the file path and let the caller serve it.
+4. Serve and auto-open: `cd <project-dir> && python3 -m http.server 8723 &` (use port 8723 or any unused port above 8000; if the curl check fails, try the next port). Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8723/.hyperframes/pick-design.html` — only proceed if it returns 200. Then open it: `open http://localhost:8723/.hyperframes/pick-design.html` (macOS) or `xdg-open` (Linux). Do NOT use `npx hyperframes preview` for the picker — it blocks. Only start the HTTP server from the main conversation thread. If you are running as a dispatched task or subagent, return the file path and let the caller serve it.
 5. Once the user picks, tell them: "Copy the design.md from the picker and paste it here." The user pastes the markdown back into the conversation. Save it verbatim to `design.md` in the project root — it's already in spec format (YAML frontmatter + prose sections). After the user pastes, kill the background server: `kill %1` or `kill $(lsof -ti:8723)`. Then proceed with construction.
 
 The picker outputs a [google-labs-code/design.md](https://github.com/google-labs-code/design.md) spec-compliant file: YAML frontmatter with `colors`, `typography`, `rounded`, and `spacing` tokens, followed by `## Overview`, `## Colors`, `## Typography`, `## Layout`, `## Elevation`, `## Components`, and `## Do's and Don'ts` prose sections.

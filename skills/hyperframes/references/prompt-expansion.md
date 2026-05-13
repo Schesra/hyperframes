@@ -49,6 +49,13 @@ Expand into a full production prompt with these sections:
    - **Mood direction** — cultural/design references, not hex codes. ("Bauhaus color studies", "cinematic title sequence", "editorial calm")
    - **Depth layers** — BG (2-5 decoratives with ambient motion), MG (content), FG (accents, structural elements, micro-details). 8-10 total elements per scene per video-composition.md.
    - **Animation choreography** — specific verbs per element. High: SLAMS, CRASHES. Medium: CASCADE, SLIDES. Low: floats, types on, counts up. Every element gets a verb. If you can't name the verb, the element is not yet designed.
+
+     **Verbalized sampling for choreography:** For at least 2 scenes, generate 3 choreography approaches from different reasoning paths, then pick the best — not the safest:
+     - One approach starting from the **content** ("this is a data scene → precision → mechanical entrance → grid snap-in")
+     - One starting from the **emotion** ("this should feel overwhelming → simultaneous slam → everything at once then settles")
+     - One starting from the **unconventional** ("what if nothing moves? → static hold, only a cursor blinks → tension through stillness")
+
+     After choosing, verify no two consecutive scenes use the same entrance pattern. If scenes 2 and 3 both cascade staggered cards from the bottom, one of them is mode-collapsed — rethink it.
    - **Transition out** — shader or CSS, with specific type and parameters. Not "crossfade" but "blur crossfade, 0.4s, power2.inOut."
 
 5. **Recurring motifs** — visual threads across scenes from the brand palette.
@@ -59,10 +66,14 @@ Expand into a full production prompt with these sections:
 
 Write the expanded prompt to `.hyperframes/expanded-prompt.md` in the project directory. Do NOT dump it into the chat — it will be hundreds of lines.
 
-Tell the user:
+Tell the user the **full absolute path** to the file so they can open it directly. Then summarize: scene count, total duration, rhythm pattern, and transition strategy.
 
-> "I've expanded your prompt into a full production breakdown. Review it here: `.hyperframes/expanded-prompt.md`
+> "I've expanded your prompt into a full production breakdown. Review it here:
 >
-> It has [N] scenes across [duration] seconds with specific visual elements, transitions, and pacing. Edit anything you want, then let me know when you're ready to proceed."
+> **`/full/absolute/path/to/project/.hyperframes/expanded-prompt.md`**
+>
+> [N] scenes, ~[duration]s, rhythm: [pattern]. [1-2 sentence summary of transition strategy and peak moment.]
+>
+> Edit anything you want, then say go."
 
 Only move to construction after the user approves or says to continue.

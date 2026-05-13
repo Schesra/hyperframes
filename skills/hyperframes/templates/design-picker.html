@@ -67,7 +67,7 @@
       /* ── Phase 1: Mood boards ── */
       .mood-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px;
         padding: 20px;
         overflow-y: auto;
@@ -96,16 +96,77 @@
         border-color: #fff;
       }
       .mood-preview {
-        height: 500px;
+        aspect-ratio: 16/9;
         overflow: hidden;
         position: relative;
         background: #0a0a0a;
       }
-      .mood-preview > div {
-        transform-origin: top left;
+      .mood-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
       }
+      .mood-frame {
+        transform-origin: top left;
+        width: 1920px;
+        height: 1080px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        transition: opacity 0.25s;
+        z-index: 1;
+      }
+      .mood-frame.active { opacity: 1; }
+      .mood-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 50%;
+        color: #fff;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s;
+        z-index: 10;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .mood-preview:hover .mood-arrow { opacity: 1; }
+      .mood-arrow:hover { background: rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.3); }
+      .mood-arrow.left { left: 8px; }
+      .mood-arrow.right { right: 8px; }
+      .mood-dots {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 5px;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .mood-preview:hover .mood-dots { opacity: 1; }
+      .mood-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.25);
+      }
+      .mood-dot.active { background: #fff; }
       .mood-info {
-        padding: 14px 16px;
+        display: none;
       }
       .mood-name {
         font-size: 14px;
@@ -720,6 +781,14 @@
           </div>
           <div class="section-body"><div class="chips" id="depth-options"></div></div>
         </div>
+        <!-- Background -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-icon">◉</div>
+            <div class="section-title">Background</div>
+          </div>
+          <div class="section-body"><div class="chips" id="bg-options"></div></div>
+        </div>
         <!-- Motion / Easing -->
         <div class="section-card">
           <div class="section-header">
@@ -775,6 +844,7 @@
         density: null,
         depth: null,
         easing: null,
+        bgEffect: null,
       };
 
       var EASINGS = [
@@ -912,25 +982,34 @@
             "{{prompt_headline}}": (PROMPT && PROMPT.headline) || "Your Headline",
             "{{prompt_sub}}": (PROMPT && PROMPT.subline) || "A subline for your product.",
           };
-          var preview = arch.preview_html || "";
-          Object.keys(tokens).forEach(function (k) {
-            preview = preview.split(k).join(tokens[k]);
-          });
-          var tagHtml = [tp.headline.family, pal.name, CORNERS[mb.corners_index || 1].name]
-            .map(function (t) {
-              return '<span class="mood-token">' + t + "</span>";
-            })
-            .join("");
-          card.innerHTML =
-            '<div class="mood-preview"><div style="transform:scale(0.38);transform-origin:top left;width:263.16%;min-height:263.16%;">' +
-            preview +
-            '</div></div><div class="mood-info"><div class="mood-name">' +
-            mb.name +
-            '</div><div class="mood-desc">' +
-            mb.description +
-            '</div><div class="mood-tokens">' +
-            tagHtml +
-            "</div></div>";
+          var frames = arch.preview_frames || [arch.preview_html || ""];
+          var framesHtml = frames.map(function (f, fi) {
+            var resolved = f || "";
+            Object.keys(tokens).forEach(function (k) {
+              resolved = resolved.split(k).join(tokens[k]);
+            });
+            return '<div class="mood-frame' + (fi === 0 ? ' active' : '') + '">' + resolved + '</div>';
+          }).join("");
+          var dotsHtml = frames.length > 1 ? '<div class="mood-dots">' + frames.map(function (_, di) {
+            return '<div class="mood-dot' + (di === 0 ? ' active' : '') + '"></div>';
+          }).join("") + '</div>' : '';
+          var arrowsHtml = frames.length > 1 ? '<div class="mood-arrow left">‹</div><div class="mood-arrow right">›</div>' : '';
+          var bgType = arch.bg_canvas || "";
+          var canvasHtml = bgType ? '<canvas class="mood-canvas" data-bg="' + bgType + '" data-ac="' + pal.accent + '" data-bg-color="' + bg + '" data-fg="' + fg + '" data-mt="' + (pal.muted || "#666") + '"></canvas>' : '';
+          card.innerHTML = '<div class="mood-preview" style="background:' + bg + ';">' + canvasHtml + framesHtml + arrowsHtml + dotsHtml + '</div>';
+          if (frames.length > 1) {
+            (function(cardEl, count) {
+              var idx = 0;
+              var prev = cardEl.querySelector('.mood-preview');
+              function show(n) {
+                idx = (n + count) % count;
+                prev.querySelectorAll('.mood-frame').forEach(function(f,fi) { f.classList.toggle('active', fi === idx); });
+                prev.querySelectorAll('.mood-dot').forEach(function(d,di) { d.classList.toggle('active', di === idx); });
+              }
+              prev.querySelector('.mood-arrow.left').onclick = function(e) { e.stopPropagation(); show(idx - 1); };
+              prev.querySelector('.mood-arrow.right').onclick = function(e) { e.stopPropagation(); show(idx + 1); };
+            })(card, frames.length);
+          }
           card.onclick = function () {
             moodGrid.querySelectorAll(".mood-card").forEach(function (c) {
               c.classList.remove("selected");
@@ -941,8 +1020,279 @@
           };
           moodGrid.appendChild(card);
         });
+        if (typeof initAfterRender === 'function') initAfterRender();
       }
       renderMoodBoards();
+      function initAfterRender() { scaleMoodPreviews(); initCanvases(); }
+      function scaleMoodPreviews() {
+        document.querySelectorAll(".mood-preview").forEach(function (p) {
+          var s = p.offsetWidth / 1920;
+          p.querySelectorAll(".mood-frame").forEach(function (f) {
+            f.style.transform = "scale(" + s + ")";
+          });
+        });
+      }
+      window.addEventListener("resize", scaleMoodPreviews);
+
+      // ── Procedural canvas backgrounds ──
+      var _canvasRunners = [], _canvasRafRunning = false;
+      function _startCanvasLoop() {
+        if (_canvasRafRunning) return;
+        _canvasRafRunning = true;
+        function loop(t) {
+          _canvasRunners.forEach(function(r) { if (r.cvs.offsetParent !== null) r.render(t); });
+          if (_canvasRunners.length) requestAnimationFrame(loop); else _canvasRafRunning = false;
+        }
+        requestAnimationFrame(loop);
+      }
+      function initCanvases() {
+        _canvasRunners = [];
+        requestAnimationFrame(function() { requestAnimationFrame(function() { _initCanvasesInner(); }); });
+      }
+      function _initCanvasesInner() {
+      (function() {
+        function hexToRgb(h) {
+          h = h.replace('#','');
+          if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+          return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        }
+        function mulberry32(a) {
+          return function() { a |= 0; a = a + 0x6D2B79F5 | 0;
+            var t = Math.imul(a ^ a >>> 15, 1 | a); t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+        }
+        // Simplex-like noise (2D value noise with smoothstep)
+        function makeNoise(seed) {
+          var rng = mulberry32(seed);
+          var SIZE = 64, grid = [];
+          for (var i = 0; i < SIZE * SIZE; i++) grid[i] = rng();
+          function smooth(x, y) {
+            var ix = ((x|0) % SIZE + SIZE) % SIZE, iy = ((y|0) % SIZE + SIZE) % SIZE;
+            var fx = x - Math.floor(x), fy = y - Math.floor(y);
+            fx = fx*fx*(3-2*fx); fy = fy*fy*(3-2*fy);
+            var nx = (ix+1) % SIZE, ny = (iy+1) % SIZE;
+            return grid[iy*SIZE+ix]*(1-fx)*(1-fy) + grid[iy*SIZE+nx]*fx*(1-fy) +
+                   grid[ny*SIZE+ix]*(1-fx)*fy + grid[ny*SIZE+nx]*fx*fy;
+          }
+          return function(x, y, octaves) {
+            var v = 0, amp = 1, freq = 1, max = 0;
+            for (var o = 0; o < (octaves||3); o++) {
+              v += smooth(x*freq, y*freq) * amp; max += amp; amp *= 0.5; freq *= 2;
+            }
+            return v / max;
+          };
+        }
+
+        var canvases = document.querySelectorAll('.mood-canvas');
+        var runners = _canvasRunners;
+
+        canvases.forEach(function(cvs) {
+          var type = cvs.dataset.bg;
+          var ac = hexToRgb(cvs.dataset.ac);
+          var bgc = hexToRgb(cvs.dataset.bgColor || '#000000');
+          var fg = hexToRgb(cvs.dataset.fg || '#ffffff');
+          var mt = hexToRgb(cvs.dataset.mt || '#666666');
+          var ctx = cvs.getContext('2d');
+          var w, h, dpr;
+
+          function resize() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var rect = cvs.parentElement.getBoundingClientRect();
+            w = rect.width; h = rect.height;
+            cvs.width = w * dpr; cvs.height = h * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          }
+          resize();
+
+          var render;
+          var rng = mulberry32(type.length * 7 + ac[0]);
+
+          if (type === 'particles') {
+            // Upward-drifting sparks
+            var pts = [];
+            for (var i = 0; i < 60; i++) pts.push({ x: rng(), y: rng(), s: rng()*2+0.5, v: rng()*0.3+0.1, a: rng()*0.4+0.1 });
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              pts.forEach(function(p) {
+                var px = p.x * w, py = (p.y - t * p.v * 0.01) % 1;
+                if (py < 0) py += 1;
+                py *= h;
+                ctx.beginPath();
+                ctx.arc(px, py, p.s, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba('+ac[0]+','+ac[1]+','+ac[2]+','+p.a*0.6+')';
+                ctx.fill();
+              });
+            };
+          } else if (type === 'voronoi') {
+            // Slowly shifting voronoi cells
+            var seeds = [];
+            for (var i = 0; i < 20; i++) seeds.push({ x: rng(), y: rng(), dx: (rng()-0.5)*0.02, dy: (rng()-0.5)*0.02 });
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              var step = 8;
+              for (var x = 0; x < w; x += step) {
+                for (var y = 0; y < h; y += step) {
+                  var minD = 1e9, minI = 0;
+                  for (var s = 0; s < seeds.length; s++) {
+                    var sx = (seeds[s].x + Math.sin(t*0.001+s)*seeds[s].dx) * w;
+                    var sy = (seeds[s].y + Math.cos(t*0.001+s)*seeds[s].dy) * h;
+                    var d = (x-sx)*(x-sx) + (y-sy)*(y-sy);
+                    if (d < minD) { minD = d; minI = s; }
+                  }
+                  var edge = Math.sqrt(minD) < 3 ? 0.15 : 0;
+                  if (edge > 0) {
+                    ctx.fillStyle = 'rgba('+ac[0]+','+ac[1]+','+ac[2]+','+edge+')';
+                    ctx.fillRect(x, y, step, step);
+                  }
+                }
+              }
+            };
+          } else if (type === 'perlin') {
+            // Shifting false-color heatmap — render small, drawImage to scale up
+            var noise = makeNoise(42);
+            var tmpCvs = document.createElement('canvas');
+            var tmpCtx = tmpCvs.getContext('2d');
+            render = function(t) {
+              var sw = Math.ceil(w/4), sh = Math.ceil(h/4);
+              tmpCvs.width = sw; tmpCvs.height = sh;
+              var img = tmpCtx.createImageData(sw, sh);
+              var off = t * 0.0003;
+              for (var y = 0; y < sh; y++) {
+                for (var x = 0; x < sw; x++) {
+                  var v = noise(x*0.04+off, y*0.04+off*0.7, 4);
+                  var idx = (y*sw+x)*4;
+                  img.data[idx]   = Math.floor(ac[0] * v * 0.5);
+                  img.data[idx+1] = Math.floor(ac[1] * v * 0.3);
+                  img.data[idx+2] = Math.floor(ac[2] * v * 0.2);
+                  img.data[idx+3] = Math.floor(v * 80);
+                }
+              }
+              tmpCtx.putImageData(img, 0, 0);
+              ctx.clearRect(0,0,w,h);
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(tmpCvs, 0, 0, w, h);
+            };
+          } else if (type === 'ring-pulse') {
+            // Expanding ring from center
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              var cx = w*0.5, cy = h*0.5;
+              for (var i = 0; i < 3; i++) {
+                var phase = ((t * 0.0005 + i * 0.33) % 1);
+                var r = phase * Math.max(w,h) * 0.6;
+                var alpha = (1 - phase) * 0.15;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI*2);
+                ctx.strokeStyle = 'rgba('+ac[0]+','+ac[1]+','+ac[2]+','+alpha+')';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+              }
+            };
+          } else if (type === 'scanline') {
+            // Moving scan line
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              var scanY = ((t * 0.02) % h);
+              var grad = ctx.createLinearGradient(0, scanY-20, 0, scanY+20);
+              grad.addColorStop(0, 'rgba('+ac[0]+','+ac[1]+','+ac[2]+',0)');
+              grad.addColorStop(0.5, 'rgba('+ac[0]+','+ac[1]+','+ac[2]+',0.08)');
+              grad.addColorStop(1, 'rgba('+ac[0]+','+ac[1]+','+ac[2]+',0)');
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, scanY-20, w, 40);
+            };
+          } else if (type === 'digits') {
+            // Faint falling digits
+            var cols = [];
+            for (var i = 0; i < 30; i++) cols.push({ x: rng()*1.0, y: rng(), speed: rng()*0.015+0.005, chars: [] });
+            cols.forEach(function(c) { for (var j=0;j<8;j++) c.chars.push(Math.floor(rng()*10)); });
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              ctx.font = '10px monospace';
+              cols.forEach(function(c) {
+                var px = c.x * w;
+                var base = (c.y + t * c.speed * 0.001) % 1.5;
+                c.chars.forEach(function(ch, ci) {
+                  var py = (base + ci * 0.03) * h;
+                  if (py > h) py -= h * 1.5;
+                  var alpha = 0.08 - ci * 0.008;
+                  if (alpha < 0) alpha = 0;
+                  ctx.fillStyle = 'rgba('+ac[0]+','+ac[1]+','+ac[2]+','+alpha+')';
+                  ctx.fillText(String(ch), px, py);
+                });
+              });
+            };
+          } else if (type === 'sine-mesh') {
+            // Gentle deforming mesh
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              ctx.strokeStyle = 'rgba('+mt[0]+','+mt[1]+','+mt[2]+',0.08)';
+              ctx.lineWidth = 0.5;
+              var rows = 12, cols = 16;
+              for (var r = 0; r < rows; r++) {
+                ctx.beginPath();
+                for (var c = 0; c <= cols; c++) {
+                  var x = (c/cols)*w;
+                  var y = (r/rows)*h + Math.sin(c*0.5+t*0.001+r)*8;
+                  if (c===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                }
+                ctx.stroke();
+              }
+              for (var c = 0; c < cols; c++) {
+                ctx.beginPath();
+                for (var r = 0; r <= rows; r++) {
+                  var x = (c/cols)*w + Math.sin(r*0.5+t*0.0012+c)*6;
+                  var y = (r/rows)*h;
+                  if (r===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                }
+                ctx.stroke();
+              }
+            };
+          } else if (type === 'ripple') {
+            // Interference pattern
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              var cx = w*0.5, cy = h*0.5;
+              var off = t * 0.002;
+              for (var r = 10; r < Math.max(w,h)*0.7; r += 20) {
+                var phase = Math.sin(r*0.05 - off);
+                var alpha = (phase * 0.5 + 0.5) * 0.06;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI*2);
+                ctx.strokeStyle = 'rgba('+fg[0]+','+fg[1]+','+fg[2]+','+alpha+')';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+              }
+            };
+          } else if (type === 'blobs') {
+            // Morphing gradient blobs
+            var blobs = [];
+            for (var i = 0; i < 3; i++) blobs.push({ x: rng(), y: rng(), r: rng()*0.15+0.1, px: rng()*2-1, py: rng()*2-1 });
+            render = function(t) {
+              ctx.clearRect(0,0,w,h);
+              blobs.forEach(function(b, bi) {
+                var bx = (b.x + Math.sin(t*0.0004+bi*2)*0.1) * w;
+                var by = (b.y + Math.cos(t*0.0005+bi*3)*0.08) * h;
+                var br = b.r * Math.min(w,h);
+                var grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+                grad.addColorStop(0, 'rgba('+ac[0]+','+ac[1]+','+ac[2]+',0.12)');
+                grad.addColorStop(1, 'rgba('+ac[0]+','+ac[1]+','+ac[2]+',0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(bx-br, by-br, br*2, br*2);
+              });
+            };
+          } else {
+            render = null;
+          }
+
+          if (render) runners.push({ cvs: cvs, render: render, resize: resize });
+        });
+
+        if (runners.length > 0) {
+          _startCanvasLoop();
+          window.addEventListener('resize', function() { runners.forEach(function(r) { r.resize(); }); });
+        }
+      })();
+      } // end _initCanvasesInner
 
       var currentPhase = "mood";
       function showPhase(name) {
@@ -978,6 +1328,12 @@
           chipSel("density", mb.density_index, document.getElementById("density-options"));
         if (mb.depth_index != null)
           chipSel("depth", mb.depth_index, document.getElementById("depth-options"));
+        // Pre-fill background effect from architecture
+        var archBg = ARCHITECTURES[mb.arch_index || 0].bg_canvas || "";
+        var bgIdx = 0;
+        BG_EFFECTS.forEach(function(b, bi) { if (b.value === archBg) bgIdx = bi; });
+        chipSel("bgEffect", bgIdx, document.getElementById("bg-options"));
+
         var eIdx = mb.easing_index != null ? mb.easing_index : 0;
         var eOpts = document.getElementById("ease-options");
         eOpts.querySelectorAll(".ease-opt").forEach(function (c) {
@@ -1157,6 +1513,37 @@
         depthOpts.appendChild(el);
       });
 
+      // Background effect chips
+      var BG_EFFECTS = [
+        { name: "None", value: "", desc: "Solid color only" },
+        { name: "Particles", value: "particles", desc: "Drifting sparks" },
+        { name: "Voronoi", value: "voronoi", desc: "Crystal grain cells" },
+        { name: "Heatmap", value: "perlin", desc: "Shifting noise field" },
+        { name: "Ring Pulse", value: "ring-pulse", desc: "Expanding rings" },
+        { name: "Scan Line", value: "scanline", desc: "Moving horizontal sweep" },
+        { name: "Digits", value: "digits", desc: "Falling data rain" },
+        { name: "Sine Mesh", value: "sine-mesh", desc: "Deforming grid" },
+        { name: "Ripple", value: "ripple", desc: "Interference rings" },
+        { name: "Blobs", value: "blobs", desc: "Morphing gradient" }
+      ];
+      var bgOpts = document.getElementById("bg-options");
+      BG_EFFECTS.forEach(function (b, i) {
+        var el = document.createElement("div");
+        el.className = "chip";
+        el.innerHTML =
+          '<div class="chip-preview" style="background:#111;width:48px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666;">' +
+          (b.value ? '◉' : '—') +
+          '</div><div><div class="chip-label">' +
+          b.name +
+          '</div><div class="chip-sub">' +
+          b.desc +
+          "</div></div>";
+        el.onclick = function () {
+          chipSel("bgEffect", i, bgOpts);
+        };
+        bgOpts.appendChild(el);
+      });
+
       // Easing options with GSAP animation
       var easeOpts = document.getElementById("ease-options");
       EASINGS.forEach(function (e, i) {
@@ -1220,7 +1607,8 @@
           picks.corners !== null &&
           picks.density !== null &&
           picks.depth !== null &&
-          picks.easing !== null;
+          picks.easing !== null &&
+          picks.bgEffect !== null;
         document
           .getElementById("fab")
           .classList.toggle("visible", ready && currentPhase === "tune");
@@ -1291,17 +1679,22 @@
           "{{prompt_headline}}": (PROMPT && PROMPT.headline) || "Your Headline",
           "{{prompt_sub}}": (PROMPT && PROMPT.subline) || "Subline.",
         };
-        var h =
-          a.preview_html ||
-          '<div style="background:' +
-            bg +
-            ";padding:40px;min-height:100%;display:flex;align-items:center;justify-content:center;color:" +
-            mt +
-            ';font-size:14px;">No preview</div>';
-        Object.keys(tokens).forEach(function (k) {
-          h = h.split(k).join(tokens[k]);
-        });
-        pv.innerHTML = h;
+        var frames = a.preview_frames || [a.preview_html || ""];
+        var combined = frames.map(function(f) {
+          var resolved = f || "";
+          Object.keys(tokens).forEach(function (k) {
+            resolved = resolved.split(k).join(tokens[k]);
+          });
+          return resolved;
+        }).join("");
+
+        var bgFxVal = picks.bgEffect !== null ? BG_EFFECTS[picks.bgEffect].value : (a.bg_canvas || "");
+        var canvasTag = bgFxVal ? '<canvas class="mood-canvas preview-bg-canvas" data-bg="' + bgFxVal + '" data-ac="' + ac + '" data-bg-color="' + bg + '" data-fg="' + fg + '" data-mt="' + mt + '" style="position:sticky;top:0;width:100%;height:100vh;z-index:0;margin-bottom:-100vh;pointer-events:none;"></canvas>' : '';
+        pv.style.background = bg;
+        pv.innerHTML = canvasTag + '<div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:2px;">' + combined + '</div>';
+        if (bgFxVal) {
+          requestAnimationFrame(function() { requestAnimationFrame(function() { _initCanvasesInner(); }); });
+        }
       }
 
       // ── Output ──
@@ -1313,7 +1706,8 @@
           picks.type === null ||
           picks.corners === null ||
           picks.density === null ||
-          picks.depth === null
+          picks.depth === null ||
+          picks.bgEffect === null
         )
           return;
         var a = ARCHITECTURES[picks.arch],
@@ -1322,7 +1716,8 @@
         var th = THEMES[picks.theme],
           cr = CORNERS[picks.corners],
           dn = DENSITIES[picks.density],
-          dp = DEPTHS[picks.depth];
+          dp = DEPTHS[picks.depth],
+          bgFx = BG_EFFECTS[picks.bgEffect];
         var bg = th.id === "palette" && p.background ? p.background : th.bg;
         var fg = th.id === "palette" && p.foreground ? p.foreground : th.fg;
         var ac = p.accent,
@@ -1403,6 +1798,21 @@
             "\n- **Energy:** " +
             easeObj.name +
             "\n\n";
+        }
+        if (bgFx && bgFx.value) {
+          var bgDescs = {
+            "particles": "Animated particle field drifting slowly upward across the frame. 40-60 small circles (1-3px radius) in the accent color at 5-25% opacity. Each particle drifts upward at a different speed (0.1-0.4 units/sec). Use a seeded PRNG for deterministic positions. Particles wrap from bottom when they exit the top. Implement with GSAP: create absolutely-positioned divs, animate y with stagger and repeat.",
+            "voronoi": "Subtle Voronoi cell edge pattern. 15-20 seed points distributed across the frame, slowly drifting (sine/cosine oscillation). Only render the cell EDGES as thin lines (1-2px) in the accent color at 10-15% opacity — do not fill cells. The effect should look like crystalline grain structure. Implement with SVG or Canvas 2D behind the scene content.",
+            "perlin": "Animated false-color noise heatmap covering the full frame. Use 2D value noise (4 octaves) that shifts slowly over time. Map noise values to the accent color at 0-30% opacity — brighter where noise is high, transparent where low. The effect should resemble thermal camera footage with soft color blobs. Render at 1/4 resolution and scale up with image smoothing for soft edges.",
+            "ring-pulse": "Concentric rings expanding from center of frame and fading out. 3 rings active at any time, staggered by 0.33 phase. Each ring expands from 0 to 60% of frame size over ~2 seconds, opacity fading from 15% to 0% as it grows. Accent color, 1-2px stroke, no fill. Implement with GSAP-animated border-radius divs or Canvas 2D arc().",
+            "scanline": "Single horizontal scan line sweeping downward through the frame in a continuous loop. The line is a soft gradient band (~40px tall) in the accent color at 5-8% peak opacity, transparent at edges. Completes one full sweep every ~5 seconds. Implement with a GSAP-animated absolutely-positioned div with a gradient background.",
+            "digits": "Faint falling monospace digits (0-9) in 25-30 columns across the frame. Each column falls at a different speed. Characters are 10-12px in the accent color at 3-8% opacity, with leading characters brighter and trailing ones fading. Wrap from top when exiting bottom. Implement with Canvas 2D fillText or absolutely-positioned spans animated with GSAP.",
+            "sine-mesh": "Gently deforming grid mesh covering the frame. 12 horizontal and 16 vertical lines at the muted color and 5-8% opacity, 0.5px stroke. Lines are straight but displaced by a slow sine wave (amplitude ~8px, shifting over time). The effect should look like fabric or paper texture. Implement with SVG path elements or Canvas 2D lineTo.",
+            "ripple": "Concentric circles radiating from center with an interference pattern effect. Rings spaced ~20px apart, each oscillating in opacity (0-6%) driven by a sine function of distance + time offset. The result is a pulsing interference pattern where rings appear to breathe. Use foreground color. Implement with Canvas 2D arc() in a loop.",
+            "blobs": "2-3 soft radial gradient blobs in the accent color at 8-12% opacity, slowly drifting around the frame on sine/cosine paths. Each blob is 15-25% of frame size. Blobs overlap and blend additively. The effect should resemble a lava lamp or ambient light. Implement with absolutely-positioned divs with radial-gradient backgrounds animated with GSAP."
+          };
+          var bgDesc = bgDescs[bgFx.value] || bgFx.desc;
+          md += "## Background\n\n- **Effect:** " + bgFx.name + "\n- **Implementation:** " + bgDesc + "\n\n";
         }
         if (a.components) md += "## Components\n\n" + a.components + "\n\n";
         md += "## Do's and Don'ts\n\n";

@@ -60,3 +60,4 @@ Subtle reads as static at 30fps. Err toward more movement than feels safe.
 - **Anchor to edges.** Pin content to left/top or right/bottom. Centered-and-floating is a web layout pattern.
 - **Split frames.** Data panel left, content right. Top bar with metadata, full-width below. Zone-based layouts over centered stacks.
 - **Structural elements.** Rules, dividers, border panels. They create visual paths and animate well (`scaleX: 0` → `1`).
+- **Group related data.** Elements that belong together must share a container, alignment axis, or visual region — not scatter across the frame. If removing one element would leave the others looking orphaned, they need a shared parent. Closeness = relationship.
