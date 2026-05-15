@@ -2170,34 +2170,62 @@
         if (!_scGrid.querySelector("iframe")) {
           _scGrid.innerHTML = sceneHtml;
         } else {
-          // Apply palette to template iframe
+          // Apply all options to template iframe
           var _tIfr = _scGrid.querySelector("iframe");
           if (_tIfr && _tIfr.contentDocument) {
             var _tDoc = _tIfr.contentDocument;
-            var _tStyle = _tDoc.getElementById("palette-override");
-            if (!_tStyle) { _tStyle = _tDoc.createElement("style"); _tStyle.id = "palette-override"; _tDoc.head.appendChild(_tStyle); }
-            var _tRoot = _tIfr.contentWindow.getComputedStyle(_tDoc.documentElement);
-            var _tCss = ":root {\n";
+            var _tStyle = _tDoc.getElementById("finetune-override");
+            if (!_tStyle) { _tStyle = _tDoc.createElement("style"); _tStyle.id = "finetune-override"; _tDoc.head.appendChild(_tStyle); }
+
+            // Collect all CSS custom properties from template
             var _allVars = [];
-            var _rootBlock = _tDoc.querySelector("style");
-            if (_rootBlock) {
-              var _m = _rootBlock.textContent.match(/--[\w-]+\s*:/g);
-              if (_m) _m.forEach(function(v) { _allVars.push(v.replace(/\s*:$/, "")); });
-            }
+            _tDoc.querySelectorAll("style").forEach(function(st) {
+              var m = st.textContent.match(/--[\w-]+\s*:/g);
+              if (m) m.forEach(function(v) { _allVars.push(v.replace(/\s*:$/,"")); });
+            });
+            // Deduplicate
+            _allVars = _allVars.filter(function(v,i,a) { return a.indexOf(v) === i; });
+
+            var _tRoot = _tIfr.contentWindow.getComputedStyle(_tDoc.documentElement);
+            var css = ":root {\n";
+
+            // Color mapping by luminance
             _allVars.forEach(function(v) {
               var orig = _tRoot.getPropertyValue(v).trim();
-              if (!orig || orig.indexOf("#") === -1) return;
-              var origR = parseInt(orig.slice(1,3),16)||128, origG = parseInt(orig.slice(3,5),16)||128, origB = parseInt(orig.slice(5,7),16)||128;
-              var lum = (origR * 0.299 + origG * 0.587 + origB * 0.114) / 255 * 100;
+              if (!orig) return;
+              // Only remap color-valued vars
+              var hexMatch = orig.match(/#[0-9a-fA-F]{3,8}/);
+              if (!hexMatch) return;
+              var hex = hexMatch[0];
+              if (hex.length === 4) hex = "#" + hex[1]+hex[1] + hex[2]+hex[2] + hex[3]+hex[3];
+              var r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
+              var lum = (r*0.299 + g*0.587 + b*0.114) / 255 * 100;
               var target;
               if (lum > 85) target = bg;
               else if (lum < 20) target = fg;
               else if (lum > 60) target = mt;
               else target = ac;
-              _tCss += "  " + v + ": " + target + " !important;\n";
+              css += "  " + v + ": " + target + " !important;\n";
             });
-            _tCss += "}\n";
-            _tStyle.textContent = _tCss;
+
+            // Font overrides
+            _allVars.forEach(function(v) {
+              if (v.match(/font|display|heading|body|serif|mono/i)) {
+                var orig = _tRoot.getPropertyValue(v).trim();
+                if (!orig || orig.indexOf("#") !== -1) return;
+                if (v.match(/display|heading|headline/i)) css += "  " + v + ': "' + t.headline.family + '", sans-serif !important;\n';
+                else if (v.match(/body|text/i)) css += "  " + v + ': "' + t.body.family + '", sans-serif !important;\n';
+              }
+            });
+
+            css += "}\n";
+
+            // Global overrides for elements without CSS vars
+            css += "body, html { background: " + bg + " !important; color: " + fg + " !important; }\n";
+            css += "* { border-radius: " + cr.value + " !important; }\n";
+            css += "section, .slide, [class*='slide'] { border-radius: 0 !important; }\n";
+
+            _tStyle.textContent = css;
           }
         }
 
