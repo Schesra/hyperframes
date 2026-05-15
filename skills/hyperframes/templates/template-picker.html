@@ -443,12 +443,13 @@ function onLoad(slug) {
   if (ds) {
     var dsStyle = doc.createElement("style");
     dsStyle.textContent = "deck-stage{display:block;width:1920px;height:1080px;position:relative;overflow:hidden;}" +
-      "deck-stage>section.slide{position:absolute;top:0;left:0;width:100%;height:100%;}" +
-      "deck-stage>section.slide:not(.active){visibility:hidden;opacity:0;}";
+      "deck-stage>section{position:absolute;top:0;left:0;width:100%;height:100%;visibility:hidden;opacity:0;}" +
+      "deck-stage>section.active{visibility:visible;opacity:1;}";
     doc.head.appendChild(dsStyle);
-    // Ensure first slide has active class
-    var firstSlide = ds.querySelector("section.slide");
-    if (firstSlide && !ds.querySelector("section.slide.active")) {
+    // Ensure first section has active class
+    var firstSlide = ds.querySelector("section");
+    if (firstSlide) {
+      ds.querySelectorAll("section").forEach(function(s) { s.classList.remove("active"); });
       firstSlide.classList.add("active");
     }
   }
