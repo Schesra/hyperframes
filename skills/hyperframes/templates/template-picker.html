@@ -573,12 +573,21 @@ function selectTemplate(slug) {
   if (!t) return;
 
   var pal = activePal > 0 ? PALETTES[activePal] : null;
+  var tone = "bold";
+  if (t.scheme === "dark") tone = "dark";
+  else if (t.density === "low") tone = "warm";
+  else if (t.density === "high") tone = "technical";
+  else if (t.tagline.match(/playful|cheerful|friendly|fun/i)) tone = "playful";
+  else if (t.tagline.match(/editorial|serif|literary|magazine/i)) tone = "editorial";
+
   var msg = {
     type: "templatePick",
     slug: slug,
     name: t.name,
     tagline: t.tagline,
     scheme: t.scheme,
+    tone: tone,
+    promptText: PROMPT_TEXT,
     palette: pal ? {bg: pal.bg, fg: pal.fg, accent: pal.ac, muted: pal.mt} : null
   };
 

@@ -2480,6 +2480,36 @@
                 }
                 document.getElementById("tp-prev").onclick = function() { go(-1); };
                 document.getElementById("tp-next").onclick = function() { go(1); };
+
+                // Inject contextual text
+                if (pick.promptText) {
+                  var pt = pick.promptText;
+                  var tone = pick.tone || "bold";
+                  var display = [pt.taglines && pt.taglines[tone] || pt.headline || "", pt.headline || "", pt.headline || "", pt.sub || ""];
+                  var hl = pt.headlines || [], bd = pt.body || [], st = pt.stats || [];
+                  var sL = pt.statLabels || [], lb = pt.labels || [], sm = pt.smalls || [];
+                  var di=0,hi=0,bi=0,si=0,sli=0,li=0,smi=0;
+                  function isLeaf(el) { for (var c=el.firstChild;c;c=c.nextSibling) { if (c.nodeType===1&&c.textContent.trim().length>0) return false; } return true; }
+                  slides.forEach(function(slide) {
+                    slide.querySelectorAll("*").forEach(function(el) {
+                      if (!isLeaf(el)) return;
+                      var text = el.textContent.trim();
+                      if (!text) return;
+                      try { var cs = ifr.contentWindow.getComputedStyle(el); } catch(e) { return; }
+                      if (cs.display==="none"||cs.visibility==="hidden") return;
+                      var fs = parseFloat(cs.fontSize);
+                      if (fs>=60 && display.length) { el.textContent=display[di%display.length]; di++; }
+                      else if (fs>=32 && hl.length) { el.textContent=hl[hi%hl.length]; hi++; }
+                      else if (fs>=18&&text.length>20&&bd.length) { el.textContent=bd[bi%bd.length]; bi++; }
+                      else if (fs>=18&&text.length<=20&&sm.length) { el.textContent=sm[smi%sm.length]; smi++; }
+                      else if (/^\d/.test(text)&&text.length<10&&st.length) { el.textContent=st[si%st.length]; si++; }
+                      else if (fs<14&&text.length<30&&text===text.toUpperCase()&&lb.length) { el.textContent=lb[li%lb.length]; li++; }
+                      else if (fs<14&&sL.length) { el.textContent=sL[sli%sL.length]; sli++; }
+                      else if (text.length>20&&bd.length) { el.textContent=bd[bi%bd.length]; bi++; }
+                      else if (sm.length) { el.textContent=sm[smi%sm.length]; smi++; }
+                    });
+                  });
+                }
               });
             }
           }
