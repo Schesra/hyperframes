@@ -167,11 +167,12 @@ body {
 .card.selected-exit {
   position: relative;
   z-index: 201;
-  animation: cardZoom 0.9s cubic-bezier(0.4,0,0,1) forwards;
+  animation: cardLift 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
 }
-@keyframes cardZoom {
+@keyframes cardLift {
   0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(4); opacity: 0; }
+  50% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1.06); opacity: 0; }
 }
 .loading-msg {
   position: fixed;
@@ -585,17 +586,7 @@ function selectTemplate(slug) {
   var card = document.getElementById("card-" + slug);
   var overlay = document.getElementById("trans-overlay");
   overlay.classList.add("active");
-  if (card) {
-    var rect = card.getBoundingClientRect();
-    var cx = rect.left + rect.width / 2;
-    var cy = rect.top + rect.height / 2;
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    var ox = (50 + (vw / 2 - cx) / rect.width * 50) + "%";
-    var oy = (50 + (vh / 2 - cy) / rect.height * 50) + "%";
-    card.style.transformOrigin = ox + " " + oy;
-    card.classList.add("selected-exit");
-  }
+  if (card) card.classList.add("selected-exit");
 
   setTimeout(function() {
     if (window.parent !== window) {
