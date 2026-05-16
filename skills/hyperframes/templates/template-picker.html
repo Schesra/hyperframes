@@ -107,12 +107,11 @@ body {
   background: #000;
   overflow: hidden;
 }
-.cprev iframe {
+.cprev-inner {
   width: 1920px;
   height: 1080px;
-  border: none;
-  transform-origin: top left;
   pointer-events: none;
+  overflow: hidden;
 }
 .cnav {
   position: absolute;
@@ -589,10 +588,11 @@ function buildGrid() {
     var card = document.createElement("div");
     card.className = "card";
     card.id = "card-" + t.slug;
+
+    var previewContent = t.preview_html || '<div style="width:1920px;height:1080px;background:#222;display:flex;align-items:center;justify-content:center;color:#888;font-size:48px;">' + t.name + '</div>';
+
     card.innerHTML =
-      '<div class="cprev">' +
-        '<iframe id="ifr-' + t.slug + '" src="/templates/' + t.slug + '/template.html" sandbox="allow-same-origin" loading="lazy"></iframe>' +
-      '</div>' +
+      '<div class="cprev"><div class="cprev-inner">' + previewContent + '</div></div>' +
       '<div class="cinfo">' +
         '<div><div class="nm">' + t.name + '</div><div class="tl">' + t.tagline + '</div></div>' +
         '<div class="badges"><span class="bg">' + t.scheme + '</span><span class="bg">' + t.density + '</span></div>' +
@@ -600,12 +600,14 @@ function buildGrid() {
     card.addEventListener("click", (function(s) { return function() { selectTemplate(s); }; })(t.slug));
     grid.appendChild(card);
 
-    var ifr = card.querySelector("iframe");
-    ifr.addEventListener("load", function() { onLoad(t.slug); });
+    // Scale the 1920px content to fit the card
+    var inner = card.querySelector(".cprev-inner");
+    if (inner) {
+      var scale = card.querySelector(".cprev").offsetWidth / 1920;
+      inner.style.transform = "scale(" + scale + ")";
+      inner.style.transformOrigin = "top left";
+    }
   });
-
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("loading").textContent = "Loading 0/" + ALL_TEMPLATES.length + "...";
 }
 
 function buildVideoCards() {
@@ -691,7 +693,8 @@ function selectTemplate(slug) {
     scheme: t.scheme,
     tone: tone,
     promptText: PROMPT_TEXT,
-    palette: pal ? {bg: pal.bg, fg: pal.fg, accent: pal.ac, muted: pal.mt} : null
+    palette: pal ? {bg: pal.bg, fg: pal.fg, accent: pal.ac, muted: pal.mt} : null,
+    preview_html: t.preview_html || ""
   };
 
   // Animate: fade background, scale card, then send

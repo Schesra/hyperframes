@@ -25,6 +25,79 @@ def extract_color_vars(html_path):
     return [m[0] for m in re.findall(r'(--[\w-]+)\s*:\s*([^;]+)', root_match.group(1))
             if '#' in m[1] or 'rgb' in m[1]]
 
+def extract_preview(html_path, slug):
+    """Extract the first slide + scoped CSS as an inline preview HTML string."""
+    with open(html_path) as f:
+        html = f.read()
+
+    # Extract all <style> blocks
+    styles = re.findall(r'<style[^>]*>(.*?)</style>', html, re.DOTALL)
+    css = '\n'.join(styles)
+
+    # Find the first slide
+    # Try: deck-stage > section, section.slide, div.slide, .slide
+    slide_html = ""
+    for pattern in [
+        r'(<section[^>]*class="[^"]*s-cover[^"]*"[^>]*>.*?</section>)',
+        r'(<section[^>]*class="[^"]*slide[^"]*"[^>]*>.*?</section>)',
+        r'(<div[^>]*class="[^"]*slide[^"]*"[^>]*>.*?</div>\s*(?=<div[^>]*class="[^"]*slide|</div>))',
+    ]:
+        m = re.search(pattern, html, re.DOTALL)
+        if m:
+            slide_html = m.group(1)
+            break
+
+    if not slide_html:
+        # Fallback: grab the body content
+        body_match = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
+        if body_match:
+            slide_html = body_match.group(1)[:3000]
+
+    if not css and not slide_html:
+        return ""
+
+    # Scope CSS: prefix all selectors with .tp-{slug}
+    scope_class = f"tp-{slug}"
+    scoped_css = css
+    # Replace :root with .tp-{slug} scope
+    scoped_css = scoped_css.replace(':root', f'.{scope_class}')
+    # Prefix other selectors (rough but effective)
+    # Replace top-level selectors that start with a letter, ., # or [
+    lines = []
+    for line in scoped_css.split('\n'):
+        stripped = line.strip()
+        # Skip @import, @font-face, @keyframes
+        if stripped.startswith('@') or stripped.startswith('}') or stripped.startswith('/*') or not stripped:
+            lines.append(line)
+            continue
+        # If line contains { and doesn't start with space (top-level selector)
+        if '{' in stripped and not line.startswith(' ') and not line.startswith('\t'):
+            # Prefix each selector before {
+            before_brace = stripped.split('{')[0]
+            after_brace = '{'.join(stripped.split('{')[1:])
+            selectors = before_brace.split(',')
+            prefixed = ', '.join(
+                f'.{scope_class} {s.strip()}' if not s.strip().startswith(f'.{scope_class}') else s.strip()
+                for s in selectors
+            )
+            lines.append(f'      {prefixed} {{{after_brace}')
+        else:
+            lines.append(line)
+    scoped_css = '\n'.join(lines)
+
+    # Build inline preview: scoped style + slide content
+    preview = (
+        f'<div class="{scope_class}" style="width:1920px;height:1080px;position:relative;overflow:hidden;">'
+        f'<style>{scoped_css}</style>'
+        f'{slide_html}'
+        f'</div>'
+    )
+
+    # Escape for JSON embedding (single quotes in style attrs)
+    preview = preview.replace('\\', '\\\\').replace('"', '\\"')
+
+    return preview
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--template', required=True)
@@ -43,13 +116,15 @@ def main():
         html_path = os.path.join(args.templates_dir, t['slug'], 'template.html')
         if not os.path.exists(html_path):
             continue
+        preview = extract_preview(html_path, t['slug'])
         templates.append({
             'slug': t['slug'],
             'name': t['name'],
             'tagline': t['tagline'],
             'scheme': t['scheme'],
             'density': t['density'],
-            'colorVars': extract_color_vars(html_path)
+            'colorVars': extract_color_vars(html_path),
+            'preview_html': preview
         })
 
     with open(args.template) as f:
