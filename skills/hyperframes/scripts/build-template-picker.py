@@ -111,13 +111,24 @@ def main():
     with open(index_path) as f:
         index = json.load(f)
 
+    # Import structure extraction
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, script_dir)
+    try:
+        from importlib import import_module
+        extract_mod = {}
+        exec(open(os.path.join(script_dir, 'extract-template-structure.py')).read().split('def main')[0], extract_mod)
+        extract_structure = extract_mod.get('extract_structure')
+    except Exception:
+        extract_structure = None
+
     templates = []
     for t in index['templates']:
         html_path = os.path.join(args.templates_dir, t['slug'], 'template.html')
         if not os.path.exists(html_path):
             continue
         preview = extract_preview(html_path, t['slug'])
-        templates.append({
+        entry = {
             'slug': t['slug'],
             'name': t['name'],
             'tagline': t['tagline'],
@@ -125,7 +136,13 @@ def main():
             'density': t['density'],
             'colorVars': extract_color_vars(html_path),
             'preview_html': preview
-        })
+        }
+        if extract_structure:
+            try:
+                entry['structure'] = extract_structure(html_path, t['slug'])
+            except Exception:
+                pass
+        templates.append(entry)
 
     with open(args.template) as f:
         html = f.read()
