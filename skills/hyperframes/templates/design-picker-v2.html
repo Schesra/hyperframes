@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Design your visual direction</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/CustomEase.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.167.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.167.0/examples/jsm/"}}</script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:400 14px/1.5 system-ui,sans-serif;background:#0e0e0e;color:#eee;-webkit-font-smoothing:antialiased}
+
+/* ── Template selector overlay ── */
+#tmpl-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);display:flex;flex-direction:column;transition:opacity .3s}
+#tmpl-overlay.hidden{opacity:0;pointer-events:none}
+#tmpl-overlay .header{padding:32px 40px 24px;display:flex;justify-content:space-between;align-items:center}
+#tmpl-overlay .header h1{font:600 24px/1 system-ui;margin:0}
+#tmpl-overlay .header .close{background:none;border:1px solid #333;color:#eee;padding:6px 16px;font:500 12px/1 system-ui;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;border-radius:4px}
+#tmpl-overlay .header .close:hover{background:#222}
+#tmpl-grid{padding:0 40px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;overflow-y:auto;flex:1}
+.tmpl-card{background:#161616;border:1px solid #222;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s}
+.tmpl-card:hover{border-color:#555;transform:translateY(-2px)}
+.tmpl-card.active{border-color:var(--accent,#e85d26);box-shadow:0 0 0 1px var(--accent,#e85d26)}
+.tmpl-card .thumb{width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;background:#111}
+.tmpl-card .thumb .scale-wrap{width:1920px;height:1080px;transform-origin:top left}
+.tmpl-card .info{padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.tmpl-card .info .name{font:600 13px/1 system-ui;text-transform:capitalize}
+.tmpl-card .info .tag{font:400 10px/1 system-ui;color:#666;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── Edit affordances ── */
+.ds-editable{position:relative}
+.ds-editable::after{content:"";position:absolute;inset:-4px;border:2px dashed transparent;border-radius:4px;pointer-events:none;transition:border-color .15s}
+.ds-editable:hover::after{border-color:var(--accent,#e85d26)}
+.ds-edit-btn{position:absolute;top:-12px;right:-12px;width:28px;height:28px;background:var(--accent,#e85d26);color:#000;border:none;border-radius:50%;cursor:pointer;font:700 14px/1 system-ui;display:none;align-items:center;justify-content:center;z-index:10}
+.ds-editable:hover .ds-edit-btn{display:flex}
+
+/* ── Palette picker popup ── */
+.ds-popup{position:absolute;z-index:100;background:#111;border:1px solid #333;border-radius:8px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none}
+.ds-popup.visible{display:block}
+.ds-popup .option{padding:8px 12px;border-radius:4px;cursor:pointer;display:flex;gap:10px;align-items:center;transition:background .1s}
+.ds-popup .option:hover{background:#222}
+.ds-popup .option.active{background:#1a1a2e}
+.ds-popup .option .dots{display:flex;gap:4px}
+.ds-popup .option .dot{width:16px;height:16px;border-radius:3px;border:1px solid rgba(255,255,255,.1)}
+.ds-popup .option .label{font:500 13px/1 system-ui}
+
+/* ── Export overlay ── */
+#export-overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#export-overlay.visible{display:flex}
+#export-overlay textarea{width:90%;max-width:800px;height:60vh;background:#111;color:#ccc;border:1px solid #333;border-radius:8px;padding:16px;font:12px/1.5 monospace;resize:none}
+#export-overlay .actions{display:flex;gap:12px}
+#export-overlay button{background:#222;border:1px solid #444;color:#eee;padding:8px 20px;font:500 13px/1 system-ui;cursor:pointer;border-radius:4px}
+#export-overlay button.primary{background:var(--accent,#e85d26);border-color:var(--accent,#e85d26);color:#000}
+
+/* ── Design page container ── */
+#design-page{min-height:100vh}
+</style>
+</head>
+<body>
+
+<!-- Template selector overlay -->
+<div id="tmpl-overlay">
+  <div class="header">
+    <h1>Choose a template</h1>
+    <button class="close" onclick="closeTmplOverlay()" style="display:none" id="tmpl-close">Close</button>
+  </div>
+  <div id="tmpl-grid"></div>
+</div>
+
+<!-- Design page renders here -->
+<div id="design-page"></div>
+
+<!-- Export overlay -->
+<div id="export-overlay">
+  <textarea id="export-output" readonly></textarea>
+  <div class="actions">
+    <button onclick="copyExport()">Copy HTML</button>
+    <button onclick="downloadExport()" class="primary">Download .html</button>
+    <button onclick="document.getElementById('export-overlay').classList.remove('visible')">Close</button>
+  </div>
+</div>
+
+<script>
+// ── Configuration data ──
+var PALETTES = __PALETTES_JSON__;
+PALETTES.push({ name: "Custom", primary: "#FFFFFF", secondary: "#1A1A2E", tertiary: "#7B6F9E", accent: "#E94560", _custom: true });
+
+var TYPEPAIRS = __TYPEPAIRS_JSON__;
+var ALL_TEMPLATES = __TEMPLATES_JSON__;
+var PROMPT = __PROMPT_JSON__;
+var PROMPT_TEXT = __PROMPT_TEXT_JSON__;
+
+var EASINGS = [
+  { name: "Confident", value: "power3.out", desc: "Fast start, smooth deceleration" },
+  { name: "Snappy", value: "expo.out", desc: "Very fast start, crisp stop" },
+  { name: "Gentle", value: "sine.inOut", desc: "Soft acceleration and deceleration" },
+  { name: "Bouncy", value: "back.out(1.4)", desc: "Overshoots then settles" },
+  { name: "Elastic", value: "elastic.out(1, 0.5)", desc: "Springs past target and wobbles" },
+  { name: "Sharp", value: "power4.out", desc: "Aggressive start, hard stop" }
+];
+
+var CORNERS = [
+  { name: "Sharp", value: "0px" },
+  { name: "Slight", value: "4px" },
+  { name: "Rounded", value: "12px" }
+];
+
+var DENSITIES = [
+  { name: "Tight", desc: "Compact", padding: "8px", gap: "8px" },
+  { name: "Normal", desc: "Balanced", padding: "16px", gap: "16px" },
+  { name: "Generous", desc: "Spacious", padding: "32px", gap: "28px" }
+];
+
+var DEPTHS = [
+  { name: "Flat", desc: "No shadows" },
+  { name: "Subtle", desc: "Faint shadows" },
+  { name: "Layered", desc: "Glows + depth" }
+];
+
+var BG_PRESETS = [
+  { name: "None", desc: "No shader" },
+  { name: "Aurora", desc: "Flowing warmth", type: "plane", shader: "defaults", density: 1.3, speed: 0.4, strength: 4, rotX: 0, rotY: 10, rotZ: 50, camDist: 3.6, camAz: 180, camPol: 90, zoom: 1, posX: -1.4 },
+  { name: "Tide", desc: "Undulating surface", type: "water", shader: "defaults", density: 1.2, speed: 0.2, strength: 3.4, rotX: 45, rotY: 0, rotZ: 0, camDist: 4.4, camAz: 170, camPol: 70, zoom: 1, posY: 0.9, posZ: -0.3 },
+  { name: "Nebula", desc: "Iridescent depth", type: "sphere", shader: "cosmic", density: 0.8, speed: 0.3, strength: 0.3, rotX: 0, rotY: 130, rotZ: 70, camDist: 0.5, camAz: 270, camPol: 180, zoom: 15.1, posX: -0.1 },
+  { name: "Drift", desc: "Slow dark current", type: "water", shader: "defaults", density: 1.5, speed: 0.3, strength: 0.4, rotX: 50, rotY: 0, rotZ: -60, camDist: 2.8, camAz: 180, camPol: 80, zoom: 9.1 },
+  { name: "Ember", desc: "Radiant orb", type: "sphere", shader: "defaults", density: 1.1, speed: 0.1, strength: 0.4, rotX: 0, rotY: 0, rotZ: 0, camDist: 7.1, camAz: 60, camPol: 90, zoom: 15.3, posY: -0.15 },
+  { name: "Silk", desc: "Gentle pastel motion", type: "water", shader: "defaults", density: 1, speed: 0.3, strength: 3, rotX: 0, rotY: 0, rotZ: -90, camDist: 2.9, camAz: 180, camPol: 120, zoom: 1, posY: 1.8 },
+  { name: "Prism", desc: "Light refraction", type: "water", shader: "glass", density: 1.2, speed: 0.2, strength: 3.4, rotX: 45, rotY: 0, rotZ: 0, camDist: 4.4, camAz: 170, camPol: 70, zoom: 1, posY: 0.9, posZ: -0.3 },
+  { name: "Fog", desc: "Layered color mist", type: "sphere", shader: "fog", density: 1.0, speed: 0.4, strength: 1.0, rotX: 0, rotY: 0, rotZ: 0, camDist: 0.5, camAz: 180, camPol: 90, zoom: 25 },
+  { name: "Blob", desc: "Organic wobble", type: "sphere", shader: "defaults", density: 1.3, speed: 0.4, strength: 1.5, rotX: 0, rotY: 10, rotZ: 0, camDist: 3.6, camAz: 180, camPol: 90, zoom: 1 }
+];
+
+// ── State ──
+var state = {
+  template: null,
+  palette: 0,
+  type: 0,
+  easing: 0,
+  corners: 1,
+  density: 1,
+  depth: 1,
+  bg: 0
+};
+
+// ── Template grid ──
+function buildGrid() {
+  var grid = document.getElementById("tmpl-grid");
+  ALL_TEMPLATES.forEach(function(t, i) {
+    var card = document.createElement("div");
+    card.className = "tmpl-card";
+    card.innerHTML = '<div class="thumb"><div class="scale-wrap" id="thumb-' + t.slug + '"></div></div><div class="info"><span class="name">' + t.name + '</span><span class="tag">' + (t.scheme || '') + '</span></div>';
+    card.onclick = function() { pickTemplate(t.slug); };
+    grid.appendChild(card);
+  });
+  // Load template previews via iframes
+  ALL_TEMPLATES.forEach(function(t) {
+    var wrap = document.getElementById("thumb-" + t.slug);
+    if (!wrap) return;
+    var iframe = document.createElement("iframe");
+    iframe.src = "templates/" + t.slug + "/template.html";
+    iframe.sandbox = "allow-same-origin";
+    iframe.style.cssText = "width:1920px;height:1080px;border:none;pointer-events:none;";
+    wrap.appendChild(iframe);
+    // Scale after load
+    iframe.onload = function() {
+      var cardW = wrap.parentElement.clientWidth;
+      wrap.style.transform = "scale(" + (cardW / 1920) + ")";
+    };
+  });
+}
+
+function closeTmplOverlay() {
+  document.getElementById("tmpl-overlay").classList.add("hidden");
+}
+
+function openTmplOverlay() {
+  document.getElementById("tmpl-overlay").classList.remove("hidden");
+}
+
+// ── Template loading ──
+function pickTemplate(slug) {
+  state.template = slug;
+  closeTmplOverlay();
+  document.getElementById("tmpl-close").style.display = "";
+  loadDesignPage(slug);
+}
+
+function loadDesignPage(slug) {
+  // Fetch design.html template
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "templates/" + slug + "/design.html?t=" + Date.now(), false);
+  xhr.send();
+  if (xhr.status !== 200) { alert("No design.html for " + slug); return; }
+  var html = xhr.responseText;
+
+  // Fetch summary.html for template CSS + slide cards
+  var sxhr = new XMLHttpRequest();
+  sxhr.open("GET", "templates/" + slug + "/summary.html?t=" + Date.now(), false);
+  sxhr.send();
+  var summary = sxhr.status === 200 ? sxhr.responseText : "";
+
+  // Apply current state
+  html = applyTokens(html, slug, summary);
+
+  // Inject into page
+  var page = document.getElementById("design-page");
+  page.innerHTML = "";
+  // Parse and inject styles + body
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(html, "text/html");
+
+  // Copy styles
+  doc.querySelectorAll("style").forEach(function(s) {
+    var ns = document.createElement("style");
+    ns.textContent = s.textContent;
+    ns.id = s.id || "";
+    page.appendChild(ns);
+  });
+
+  // Copy font links
+  doc.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function(l) {
+    if (!document.querySelector('link[href="' + l.href + '"]')) {
+      document.head.appendChild(l.cloneNode());
+    }
+  });
+
+  // Copy body content
+  var bodyContent = doc.body.innerHTML;
+  var container = document.createElement("div");
+  container.innerHTML = bodyContent;
+  page.appendChild(container);
+
+  // Execute scripts
+  doc.querySelectorAll("script:not([type='importmap'])").forEach(function(s) {
+    if (s.type === "module") {
+      var ns = document.createElement("script");
+      ns.type = "module";
+      ns.textContent = s.textContent;
+      page.appendChild(ns);
+    } else if (!s.src) {
+      var fn = new Function(s.textContent);
+      fn();
+    }
+  });
+
+  // Add edit affordances
+  addEditControls();
+}
+
+function applyTokens(html, slug, summary) {
+  var p = PALETTES[state.palette];
+  var t = TYPEPAIRS[state.type];
+  var e = EASINGS[state.easing];
+  var cr = CORNERS[state.corners];
+  var dn = DENSITIES[state.density];
+  var dp = DEPTHS[state.depth];
+  var bg = BG_PRESETS[state.bg];
+  var name = (PROMPT && PROMPT.title) || "Untitled";
+
+  // Palette
+  html = html.replace(/__PRIMARY__/g, p.primary);
+  html = html.replace(/__SECONDARY__/g, p.secondary);
+  html = html.replace(/__TERTIARY__/g, p.tertiary || "#888");
+  html = html.replace(/__ACCENT__/g, p.accent);
+  html = html.replace(/__PRIMARY_NAME__/g, "primary");
+  html = html.replace(/__SECONDARY_NAME__/g, "secondary");
+  html = html.replace(/__TERTIARY_NAME__/g, "tertiary");
+  html = html.replace(/__ACCENT_NAME__/g, "accent");
+  html = html.replace(/__ACCENT_LABEL__/g, "Accent " + p.accent);
+  html = html.replace(/__PALETTE_LEDE__/g, "Four tokens. Primary, secondary, tertiary, accent.");
+
+  // Name
+  var nameParts = name.match(/[A-Z][a-z]*/g) || [name];
+  html = html.replace(/__NAME__/g, name);
+  html = html.replace(/__NAME_LINE1__/g, nameParts[0] || name);
+  html = html.replace(/__NAME_LINE2__/g, nameParts.slice(1).join("") || "");
+
+  // Surface
+  html = html.replace(/__CORNER_RADIUS__/g, cr.value);
+  html = html.replace(/__PADDING__/g, dn.padding);
+  html = html.replace(/__GAP__/g, dn.gap);
+  html = html.replace(/__ELEVATION__/g, dp.name);
+  html = html.replace(/__DENSITY__/g, dn.name + " — " + dn.desc);
+  html = html.replace(/__BORDER__/g, "4px solid");
+  html = html.replace(/__SHADOW__/g, "8 8 0");
+
+  // Motion
+  html = html.replace(/__EASING_NAME__/g, e.name.toLowerCase());
+  html = html.replace(/__EASING_VALUE__/g, e.value);
+  html = html.replace(/__EASING_DESC__/g, e.desc);
+  html = html.replace(/__EASING_HEADLINE__/g, e.name.toLowerCase() + ".<br/>fast in.");
+  html = html.replace(/__EASING_LEDE__/g, e.desc + ". Vary entrances by intent.");
+  html = html.replace(/__DURATION_DEFAULT__/g, "0.8s default");
+  html = html.replace(/__DURATION_DESC__/g, "Slides: 0.8s. Entrances: 0.5s.");
+  html = html.replace(/__DURATION_VALUES__/g, "--dur-slide: 0.8s\n--dur-enter: 0.5s");
+
+  // Background
+  if (bg && bg.type) {
+    html = html.replace(/__BG_HEADLINE__/g, bg.name.toLowerCase() + ".<br/>" + bg.type + ".");
+    html = html.replace(/__BG_LEDE__/g, bg.name + " shader — " + bg.type + " geometry.");
+    html = html.replace(/__BG_BADGE__/g, bg.name + " \xb7 " + bg.type);
+    html = html.replace(/__BG_TYPE__/g, bg.type.charAt(0).toUpperCase() + bg.type.slice(1));
+    html = html.replace(/__BG_DENSITY__/g, String(bg.density));
+    html = html.replace(/__BG_SPEED__/g, String(bg.speed));
+    html = html.replace(/__BG_STRENGTH__/g, String(bg.strength));
+    html = html.replace(/__BG_GRAIN__/g, "2 \xb7 scatter 1");
+    var bgColors = [p.secondary, p.accent, p.tertiary || "#888"];
+    html = html.replace(/__SHADER_CONFIG__/g, JSON.stringify({
+      type: bg.type, density: bg.density, speed: bg.speed, strength: bg.strength,
+      colors: bgColors, rotation: [bg.rotX||0, bg.rotY||0, bg.rotZ||0],
+      camera: { distance: bg.camDist, azimuth: bg.camAz, polar: bg.camPol, zoom: bg.zoom||1 },
+      position: [bg.posX||0, bg.posY||0, bg.posZ||0]
+    }));
+    // GLSL filled by shader module below
+    html = html.replace(/__SHADER_VERTEX__/g, ""); // filled after shader module loads
+    html = html.replace(/__SHADER_FRAGMENT__/g, "");
+    html = html.replace(/__SHADER_SCRIPT__/g, ""); // live shader handled separately
+  } else {
+    html = html.replace(/__BG_HEADLINE__/g, "none.");
+    html = html.replace(/__BG_LEDE__/g, "No shader selected.");
+    html = html.replace(/__BG_BADGE__/g, "none");
+    html = html.replace(/__BG_TYPE__/g, "—");
+    html = html.replace(/__BG_DENSITY__/g, "—");
+    html = html.replace(/__BG_SPEED__/g, "—");
+    html = html.replace(/__BG_STRENGTH__/g, "—");
+    html = html.replace(/__BG_GRAIN__/g, "—");
+    html = html.replace(/__SHADER_CONFIG__/g, "{}");
+    html = html.replace(/__SHADER_VERTEX__/g, "");
+    html = html.replace(/__SHADER_FRAGMENT__/g, "");
+    html = html.replace(/__SHADER_SCRIPT__/g, "");
+  }
+
+  // Guidelines
+  var dos = [
+    "Use accent (" + p.accent + ") for exactly the element the viewer should remember",
+    "Maintain corners (" + cr.value + ") on every container",
+    "Keep headline weight consistent",
+    "Use the body font for all readable text",
+    "Tint neutrals toward the accent hue"
+  ];
+  var donts = [
+    "Don’t introduce a second accent color",
+    "Don’t use accent for background fills",
+    "Don’t use body text under 24px in video compositions",
+    "Don’t use the same entrance animation on every element",
+    "Don’t use pure #000 for canvas or pure #fff for text"
+  ];
+  html = html.replace(/__DOS__/g, dos.map(function(d) { return "      <li>" + d + "</li>"; }).join("\n"));
+  html = html.replace(/__DONTS__/g, donts.map(function(d) { return "      <li>" + d + "</li>"; }).join("\n"));
+
+  // Template CSS + slide cards from summary
+  if (summary) {
+    var styleMatch = summary.match(/<style[\s\S]*?<\/style>/);
+    var skeletonHtml = summary.replace(/<style[\s\S]*?<\/style>/, "").replace(/<link[^>]*>/g, "").trim();
+
+    if (styleMatch) {
+      var tmplCss = styleMatch[0].replace(/<\/?style[^>]*>/g, "");
+      tmplCss = tmplCss.replace(/--tp-primary:\s*[^;]+;/g, "--tp-primary: var(--primary);");
+      tmplCss = tmplCss.replace(/--tp-secondary:\s*[^;]+;/g, "--tp-secondary: var(--secondary);");
+      tmplCss = tmplCss.replace(/--tp-tertiary:\s*[^;]+;/g, "--tp-tertiary: var(--tertiary);");
+      tmplCss = tmplCss.replace(/--tp-accent:\s*[^;]+;/g, "--tp-accent: var(--accent);");
+      // Scope
+      var scoped = tmplCss
+        .replace(/:root\s*\{/g, ".ds-slide-frame {")
+        .replace(/^\s*\*\s*,/gm, ".ds-slide-frame *,")
+        .replace(/^\s*\*\s*\{/gm, ".ds-slide-frame * {")
+        .replace(/\*::before/g, ".ds-slide-frame *::before")
+        .replace(/\*::after/g, ".ds-slide-frame *::after")
+        .replace(/^(\s*)(\.[\w-])/gm, "$1.ds-slide-frame $2")
+        .replace(/^(\s*)(section|h1|h2|h3|p|ul|li|a|span|svg|div)(\s*[{,.])/gm, "$1.ds-slide-frame $2$3")
+        .replace(/\.ds-slide-frame \.ds-slide-frame/g, ".ds-slide-frame");
+      scoped += "\n.ds-slide-frame .slide, .ds-slide-frame section { display:flex !important; opacity:1 !important; position:relative !important; width:1920px !important; height:1080px !important; }";
+      scoped += "\n.ds-slide-frame .slide.dark { background:" + p.secondary + " !important; color:" + p.primary + " !important; }";
+      scoped += "\n.ds-slide-frame .slide.orange { background:" + p.accent + " !important; }";
+      scoped += "\n.ds-slide-frame .slide.light { background:" + p.primary + " !important; color:" + p.secondary + " !important; }";
+      html = html.replace(/__TEMPLATE_CSS__/g, scoped);
+    } else {
+      html = html.replace(/__TEMPLATE_CSS__/g, "");
+    }
+
+    // Build slide cards
+    var blocks = skeletonHtml.split(/(?=<!-- )/);
+    var cards = "", idx = 0, total = blocks.filter(function(b) { return b.trim() && /<!-- [\w-]+ -->/.test(b); }).length;
+    blocks.forEach(function(block) {
+      block = block.trim();
+      if (!block) return;
+      var nm = block.match(/<!-- ([\w-]+) -->/);
+      if (!nm) return;
+      var skel = block.replace(/<!-- [\w-]+ -->\s*/, "");
+      if (!skel.trim()) return;
+      idx++;
+      cards += '<div class="tmpl" data-idx="' + String(idx).padStart(2,"0") + '"><div class="tmpl-thumb"><div class="scale-wrap"><div class="ds-slide-frame">\n' + skel + '\n</div></div></div><div class="tmpl-foot"><span class="name">' + nm[1] + '</span><span class="idx">' + String(idx).padStart(2,"0") + " / " + total + '</span></div></div>\n';
+    });
+    html = html.replace(/__SLIDE_CARDS__/g, cards);
+    html = html.replace(/__SLIDE_COUNT__/g, String(idx));
+    var words = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
+    html = html.replace(/__SLIDE_COUNT_WORD__/g, words[idx] || String(idx));
+  } else {
+    html = html.replace(/__TEMPLATE_CSS__/g, "");
+    html = html.replace(/__SLIDE_CARDS__/g, "");
+    html = html.replace(/__SLIDE_COUNT__/g, "0");
+    html = html.replace(/__SLIDE_COUNT_WORD__/g, "zero");
+  }
+
+  html = html.replace(/__FONT_LINK_EXTRA__/g, "");
+  html = html.replace(/__DATE__/g, new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }));
+
+  return html;
+}
+
+// ── Edit controls ──
+function addEditControls() {
+  // Add template switcher + export to nav rail
+  var rail = document.querySelector("#design-page .rail");
+  if (rail) {
+    var editNav = document.createElement("div");
+    editNav.style.cssText = "display:flex;gap:8px;align-items:center;";
+    editNav.innerHTML = '<button onclick="openTmplOverlay()" style="background:none;border:1px solid rgba(255,255,255,.2);color:inherit;padding:4px 10px;font:inherit;cursor:pointer;border-radius:3px">Template</button><button onclick="exportDesign()" style="background:var(--accent);border:none;color:#000;padding:4px 12px;font:inherit;font-weight:600;cursor:pointer;border-radius:3px">Export</button>';
+    rail.appendChild(editNav);
+  }
+
+  // Make palette section clickable
+  var palSection = document.querySelector("#design-page #palette");
+  if (palSection) {
+    palSection.style.cursor = "pointer";
+    palSection.title = "Click to cycle palettes";
+    palSection.onclick = function(e) {
+      if (e.target.closest("a")) return;
+      state.palette = (state.palette + 1) % PALETTES.length;
+      loadDesignPage(state.template);
+    };
+  }
+
+  // Make motion section clickable
+  var motionSection = document.querySelector("#design-page #motion");
+  if (motionSection) {
+    motionSection.style.cursor = "pointer";
+    motionSection.title = "Click to cycle easings";
+    motionSection.onclick = function(e) {
+      if (e.target.closest("a")) return;
+      state.easing = (state.easing + 1) % EASINGS.length;
+      loadDesignPage(state.template);
+    };
+  }
+
+  // Make background section clickable
+  var bgSection = document.querySelector("#design-page #background");
+  if (bgSection) {
+    bgSection.style.cursor = "pointer";
+    bgSection.title = "Click to cycle shader presets";
+    bgSection.onclick = function(e) {
+      if (e.target.closest("a, details, summary, pre")) return;
+      state.bg = (state.bg + 1) % BG_PRESETS.length;
+      loadDesignPage(state.template);
+    };
+  }
+}
+
+// ── Export ──
+function exportDesign() {
+  // Re-generate with final tokens, this time with GLSL filled in
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "templates/" + state.template + "/design.html?t=" + Date.now(), false);
+  xhr.send();
+  var html = xhr.responseText;
+
+  var sxhr = new XMLHttpRequest();
+  sxhr.open("GET", "templates/" + state.template + "/summary.html?t=" + Date.now(), false);
+  sxhr.send();
+  var summary = sxhr.status === 200 ? sxhr.responseText : "";
+
+  html = applyTokens(html, state.template, summary);
+
+  // Show export
+  document.getElementById("export-output").value = html;
+  document.getElementById("export-overlay").classList.add("visible");
+}
+
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById("export-output").value);
+}
+
+function downloadExport() {
+  var blob = new Blob([document.getElementById("export-output").value], { type: "text/html" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.template || "design") + ".html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Init ──
+buildGrid();
+</script>
+
+</body>
+</html>
