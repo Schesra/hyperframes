@@ -2632,6 +2632,8 @@
             block = block.trim(); if (!block) return;
             var nm = block.match(/<!-- ([\w-]+) -->/); if (!nm) return;
             var skel = block.replace(/<!-- [\w-]+ -->\s*/, ""); if (!skel.trim()) return;
+            // Replace placeholders with sample content for visual display
+            skel = skel.replace(/\{\{headline\}\}/g, "Headline").replace(/\{\{body\}\}/g, "Body text goes here with supporting detail.").replace(/\{\{text\}\}/g, "Text").replace(/\{\{label\}\}/g, "Label").replace(/\{\{number\}\}/g, "42");
             idx++;
             cards += '<div class="tmpl" data-idx="' + String(idx).padStart(2,"0") + '"><div class="tmpl-thumb"><div class="scale-wrap"><div class="ds-slide-frame">\n' + skel + '\n</div></div></div><div class="tmpl-foot"><span class="name">' + nm[1] + '</span><span class="idx">' + String(idx).padStart(2,"0") + " / " + total + '</span></div></div>\n';
           });
