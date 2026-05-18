@@ -402,7 +402,16 @@ async function pollVideosReady(
       await page.evaluate((skipIdList: readonly string[]) => {
         const skip = new Set(skipIdList);
         const vids = Array.from(document.querySelectorAll("video")).filter((v) => !skip.has(v.id));
-        return vids.length === 0 || vids.every((v) => (v as HTMLVideoElement).readyState >= 2);
+        return (
+          vids.length === 0 ||
+          vids.every((v) => {
+            const ve = v as HTMLVideoElement;
+            if (ve.readyState >= 2) return true;
+            if (ve.error) return true;
+            if (ve.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) return true;
+            return false;
+          })
+        );
       }, skipIds),
     );
   };
@@ -563,8 +572,17 @@ export async function initializeSession(session: CaptureSession): Promise<void> 
       pageReadyTimeout,
     );
     if (!videosReady) {
-      throw new Error(
-        `[FrameCapture] video first frame not decoded after ${pageReadyTimeout}ms. Video elements must reach readyState >= 2 (HAVE_CURRENT_DATA) before capture starts.`,
+      const failedVideos = await page.evaluate((skipIdList: readonly string[]) => {
+        const skip = new Set(skipIdList);
+        return Array.from(document.querySelectorAll("video"))
+          .filter((v) => !skip.has(v.id))
+          .filter((v) => (v as HTMLVideoElement).readyState < 2 && !(v as HTMLVideoElement).error)
+          .map((v) => (v as HTMLVideoElement).src || v.getAttribute("src") || "(no src)")
+          .join(", ");
+      }, session.options.skipReadinessVideoIds ?? []);
+      console.warn(
+        `[FrameCapture] Some video elements did not decode within ${pageReadyTimeout}ms: ${failedVideos}. ` +
+          `Continuing render — affected videos will appear as blank/black frames.`,
       );
     }
 
