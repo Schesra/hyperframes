@@ -438,12 +438,16 @@ This is suppressed in CI environments, non-TTY shells, and when `HYPERFRAMES_NO_
   <Tab title="Preview">
     ### `pick`
 
+    <Note>
+      Experimental. Hidden behind a feature flag. Set `HYPERFRAMES_DESIGN_PICKER=1` (or `true` / `on` / `yes`) to enable. Always enabled when running from the monorepo for contributors.
+    </Note>
+
     Open the design picker in your browser to choose a template and create a `design.md`:
 
     ```bash
-    npx hyperframes pick
-    npx hyperframes pick --port 8723
-    npx hyperframes pick --build-only
+    HYPERFRAMES_DESIGN_PICKER=1 npx hyperframes pick
+    HYPERFRAMES_DESIGN_PICKER=1 npx hyperframes pick --port 8723
+    HYPERFRAMES_DESIGN_PICKER=1 npx hyperframes pick --build-only
     ```
 
     | Flag | Description |

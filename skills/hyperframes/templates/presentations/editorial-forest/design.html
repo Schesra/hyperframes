@@ -15,6 +15,7 @@
 :root{
   --primary:__PRIMARY__;--secondary:__SECONDARY__;--tertiary:__TERTIARY__;--accent:__ACCENT__;
   --paper:var(--primary);--forest:var(--secondary);--sage:var(--tertiary);--amber:var(--accent);
+  --pink:#E89CB1;--green-deep:#243A21;
   --ink-dim:color-mix(in srgb,var(--paper) 55%,var(--forest));
   --hairline:color-mix(in srgb,var(--paper) 14%,transparent);
   --f-disp:"Cormorant Garamond",serif;--f-body:"Inter",sans-serif;--f-mono:"JetBrains Mono",monospace;
@@ -49,7 +50,7 @@ section{position:relative;padding:var(--pad-y) var(--pad-x)}
 .cover-chrome{display:flex;justify-content:space-between;font:500 11px/1 var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)}
 .cover-chrome .accent{color:var(--amber)}
 .cover-headline{align-self:end;margin:0;font:italic 500 clamp(80px,15vw,240px)/.92 var(--f-disp);letter-spacing:-.02em;color:var(--paper)}
-.cover-headline em{font-style:normal;color:var(--amber)}
+.cover-headline em{font-style:normal;color:var(--green-deep);background:var(--pink);padding:0 .12em;border-radius:.06em;display:inline-block;line-height:.95}
 .cover-foot{margin-top:48px;display:grid;grid-template-columns:repeat(4,1fr);gap:28px;padding-top:24px;border-top:1px solid var(--hairline)}
 .cover-foot .cell{display:flex;flex-direction:column;gap:6px}
 .cover-foot .k{font:500 10px/1.4 var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)}

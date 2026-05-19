@@ -10,6 +10,7 @@ import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import * as clack from "@clack/prompts";
 import { c } from "../ui/colors.js";
+import { isDesignPickerEnabled } from "../utils/env.js";
 
 export const examples: Example[] = [
   ["Open the design picker in your browser", "hyperframes pick"],
@@ -281,6 +282,16 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    if (!isDesignPickerEnabled()) {
+      clack.log.error(c.error("Design picker is an experimental feature and is not enabled."));
+      clack.log.info(
+        c.dim("Set ") +
+          c.accent("HYPERFRAMES_DESIGN_PICKER=1") +
+          c.dim(" to enable, then retry: ") +
+          c.accent("hyperframes pick"),
+      );
+      return;
+    }
     const cwd = process.cwd();
 
     if (!hasPython3()) {

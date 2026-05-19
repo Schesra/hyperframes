@@ -8,6 +8,7 @@ import { renderUsage } from "citty";
 import type { CommandDef } from "citty";
 import { c } from "./ui/colors.js";
 import { VERSION } from "./version.js";
+import { isDesignPickerEnabled } from "./utils/env.js";
 
 // ── Root-level command groups ──────────────────────────────────────────────
 interface Group {
@@ -23,7 +24,12 @@ const GROUPS: Group[] = [
       ["add", "Install a block or component from the registry"],
       ["capture", "Capture a website for video production"],
       ["catalog", "Browse and install blocks and components"],
-      ["pick", "Open the design picker in your browser to create a design.md"],
+      ...(isDesignPickerEnabled()
+        ? ([["pick", "Open the design picker in your browser to create a design.md"]] as [
+            string,
+            string,
+          ][])
+        : []),
       ["preview", "Start the studio for previewing compositions"],
       ["publish", "Upload a project and get a stable public URL"],
       ["render", "Render a composition to MP4 or WebM"],
