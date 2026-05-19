@@ -20,7 +20,9 @@
 - **step-5-build.md**: mode-aware build process; explicit "fresh ≠ paste, recombine ≠ frankenstein".
 - **beat-builder-guide.md**: 3-mode table is the FIRST mandatory read; "non-negotiable in every mode: customize."
 
-**Branch:** `feat/pipeline-quality-v2` (continued from prior session). **13 commits** total this session.
+**Branch:** `feat/pipeline-quality-v2` (continued from prior session). **15 commits** total this session.
+
+**Library is internally consistent.** Every scene appears in (a) its section README, (b) the master lookup table in `examples/README.md`, (c) the rendered MP4 list, and (d) the Verse asset ID table below. The technique-pick checklist in step-3 has reliable coverage — an agent can find any of the 57 scenes from the lookup table without grepping the directory.
 
 **What's deferred:** agent self-test on a fresh worktree (the proof point that the library + 3-mode wiring changes agent behavior), mining the remaining archive projects for more lifts, deeper sections (especially 03 easing, 05 shader, 06 css, 08 svg).
 
@@ -555,10 +557,12 @@ batch_upload_assets supports up to 20 files at once. PUTs can run in parallel vi
 
 ---
 
-## THE 13 COMMITS
+## THE 15 COMMITS
 
 ```
-[pending]  feat(skill): examples library batch 7 — 4 gap-fillers + 3-mode skill wiring (57 scenes total)
+6bbfafe0  docs(skill): sync remaining section READMEs (01, 02, 04, 10, 11) — 9 missing scenes
+f2d1d11d  docs(skill): sync library READMEs with batch 7 — 3-mode framework + 4 new scenes
+8f4b7eb5  feat(skill): examples library batch 7 — 4 gap-fillers + 3-mode skill wiring (57 scenes)
 3d7564bb  docs: refresh HANDOFF-examples-library to ship state (Grand Tour live, batch 6, skill wiring active)
 b2f4ee26  docs: HANDOFF-examples-library.md — 49 scenes, gallery live
 46629336  feat(skill): examples library batch 6 - 4 more archive lifts (53 scenes total)
@@ -573,7 +577,17 @@ a877da70  feat(skill): examples library section 04 — composed UI, 8 scenes
 04827b98  feat(skill): examples library scaffold + section 01 (typography) — 10 scenes
 ```
 
-All on branch `feat/pipeline-quality-v2`, ahead of `origin/feat/pipeline-quality-v2` by 13 commits.
+All on branch `feat/pipeline-quality-v2`, ahead of `origin/feat/pipeline-quality-v2` by 15 commits.
+
+### What batches 8 + 9 did (docs sync after batch 7)
+
+The skill wiring update in batch 7 (which introduced the 3-mode framework) made it visible that two layers of documentation had been drifting:
+
+1. **Library READMEs were stale.** `examples/README.md` told agents to "copy the closest scene and rename" — the rigid framing the user explicitly corrected. The lookup table was missing 9 scenes from batches 5-7. The "_stitched/ reels" section pointed at HTML files that don't exist (Grand Tour was shipped as an MP4 only). Authoring conventions described `<template>` fragments but actual scenes are standalone HTML5 documents at `<section>/scene-NN-name/index.html`. All fixed in batches 8 + 9.
+
+2. **Section READMEs were behind disk state.** Five sections (01, 02, 04, 10, 11) had scenes added in batches 5-6 that never made it into the section README tables. 9 scenes added, all with QC log entries.
+
+Net effect after batch 9: every scene in the library appears in (a) its section README and (b) the master lookup table in `examples/README.md`. The technique-pick checklist in step-3 (which forces beats to cite scenes by path) now has reliable coverage — an agent can find any of the 57 scenes from the lookup table without grepping the directory.
 
 ---
 
