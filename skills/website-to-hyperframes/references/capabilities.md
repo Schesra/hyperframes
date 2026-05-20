@@ -6,6 +6,13 @@ You are NOT limited to what was captured from the website. You can create shader
 
 For implementation patterns (working code), see `techniques.md`. This file is the WHAT; techniques.md is the HOW.
 
+## Essential Rules
+
+- **Deterministic:** No `Math.random()`, no `Date.now()`, no `requestAnimationFrame`, no `repeat: -1`. The render engine seeks to exact timestamps.
+- **Timeline contract:** `window.__timelines["composition-id"] = tl` must be set synchronously. The timeline length defines the composition duration.
+- **Sub-compositions:** External `.html` files loaded via `data-composition-src`. Auto-nested timelines, scoped CSS, scoped scripts.
+- **Linter:** 60+ rules. Run `npx hyperframes lint` before render. Catches missing timelines, overlapping clips, broken paths, GSAP errors.
+
 ## Table of Contents
 
 | #   | Section                                              | What it covers                                                                                                                                                                                                                  |
@@ -278,7 +285,7 @@ EQ bars, spectrum UI, generic waveforms, note clip-art, generic particles, rainb
 
 ## 8. HTML-in-canvas
 
-Documented in skills/website-to-hyperframes/references/html-in-canvas-patterns.md (497 lines).
+Documented in skills/hyperframes/references/html-in-canvas-patterns.md (504 lines).
 
 ### Capability
 

@@ -4,45 +4,28 @@ You are building ONE beat of a multi-beat video composition. This file tells you
 
 ## Step 1: Read and understand
 
-**Required for EVERY beat, in this order:**
+**Required (every beat):**
 
-1. **The example scenes cited in your beat spec.** The beat spec from `storyboard.md` (step-3) lists 2-4 example scenes AND specifies a **mode** for how to use them. Open every cited scene and read its source end-to-end — markup, CSS, GSAP timeline, comments. The mode tells you what to do next (see below). If the beat spec didn't cite scenes or didn't specify a mode, escalate back to the main agent: the storyboard is incomplete.
-2. **Load the `hyperframes` skill** — composition rules, data attributes, timeline contract, deterministic rendering. Read the whole skill.
-3. **[capabilities.md](capabilities.md)** — full inventory of HyperFrames capabilities (24 sections). Read the Table of Contents first, then deep-dive sections your beat needs.
-4. **The beat spec** the main agent gave you — concept, choreography, assets, brand values, timing.
-
-**The three modes — your beat spec picks one:**
-
-| Mode             | When the beat spec picks this                                                                                  | What you do                                                                                                                                                                                                                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **copy+mutate**  | The cited scene is a near-1:1 fit for the beat (same UI shape, same length, just different brand/content).     | Copy the scene's `index.html` into `compositions/beat-N-name.html` as a seed. Then mutate: swap content, change colors to DESIGN.md, adjust copy, tune duration. Keep the timeline shape and easing variety. **Still customize** — the beat is never just "scene-X with words swapped."         |
-| **recombine**    | No single scene fits, but 2-3 scenes each contribute a layer (e.g. UI from one + counter from another + transition from a third). | Start from the closest scene as seed, then layer in the other techniques by porting their patterns. You're authoring an arrangement — the example scenes are ingredients, not the dish.                                                                                           |
-| **fresh**        | The beat is a unique composition the library doesn't directly cover, but the examples set the bar for taste.   | Write from scratch. Use the cited scenes as taste references for easing variety, continuous-motion practice, snapshot determinism, comment density. Do NOT regress to "static screenshot + Ken Burns + fade-in headline" — that's the failure mode the library exists to prevent. |
-
-**Non-negotiable in every mode:** customize for THIS beat's content, brand, timing, and narration. If your output would be recognizable as "scene-X with content swapped," you copied without thinking — even in copy+mutate mode, the beat must read as native to the video, not as a borrowed template.
-
-**Why example scenes come first:** every prior eval round showed sub-agents writing from-scratch compositions that defaulted to "static screenshot + Ken Burns + fade-in headline." The example scenes are calibrated to demonstrate the techniques that work. Study them, then choose your mode.
-
-**What to carry over (in any mode):** the markup scaffold patterns, the GSAP timeline shape, the easing variety, the continuous-motion sub-tweens during holds, the per-frame snapshot determinism (pre-built DOM + CSS-locked initial state). **What you must change:** the words, the brand colors (pull from DESIGN.md), the specific element content (your beat's data, not the example's), the duration if the beat is longer/shorter than the example.
-
-**If your beat has narration**, also study [`examples/04-composed-ui/scene-02-chat-with-typing/index.html`](../examples/04-composed-ui/scene-02-chat-with-typing/index.html) — it's the canonical narration-sync pattern. Every meaningful narration phrase from `transcript.json` should land at a timeline event at the same timestamp.
+1. **Load the `hyperframes` skill** — composition rules, data attributes, timeline contract, deterministic rendering. Read the whole skill.
+2. **[capabilities.md](capabilities.md)** — full inventory of HyperFrames capabilities (24 sections). Read the Table of Contents first, then deep-dive sections your beat needs.
+3. **The beat spec** the main agent gave you — concept, choreography, assets, brand values, timing.
 
 **Read based on what your beat needs (pick relevant ones):**
 
-| Resource                                                                    | What it covers                                                                                                                | Read when                                         |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| [techniques.md](../../hyperframes/references/techniques.md)                 | 20 visual techniques with code: SVG path drawing, Canvas 2D, CSS 3D, kinetic type, variable fonts, MotionPath, counters       | Beat uses any of these techniques                 |
-| [text-effects.md](../../hyperframes/references/text-effects.md)             | 24 named text animations: soft-blur-in, typewriter, kinetic-center-build, line-reveal, stagger, crossfade, shared-axis        | Beat has text animation                           |
-| [html-in-canvas-patterns.md](html-in-canvas-patterns.md)                    | HTML-in-Canvas: iPhone/MacBook mockups, liquid glass, magnetic, portal, shatter, text cursor                                  | Beat uses device mockups or WebGL effects on HTML |
-| [transitions.md](../../hyperframes/references/transitions.md)               | Shader transition API, HyperShader.init() pattern, all 14 WebGL shaders                                                       | Beat has shader transitions                       |
-| [transitions/](../../hyperframes/references/transitions/)                   | 14 CSS transition category files: push, scale, dissolve, blur, 3D flip, light leak, distortion, grid, mechanical, destruction | Beat uses CSS transitions                         |
-| [css-patterns.md](../../hyperframes/references/css-patterns.md)             | Text markers: highlight sweeps, hand-drawn circles, burst lines, scribble, sketchout                                          | Beat uses text emphasis/markers                   |
-| [audio-reactive.md](../../hyperframes/references/audio-reactive.md)         | Bass→scale, mid→shape, treble→glow mappings                                                                                   | Beat reacts to music/audio                        |
-| [captions.md](../../hyperframes/references/captions.md)                     | Per-word karaoke, tone-adaptive styling, positioning                                                                          | Beat includes captions                            |
-| [typography.md](../../hyperframes/references/typography.md)                 | Font hierarchy, variable fonts, responsive type scaling                                                                       | Beat has complex typography                       |
-| [motion-principles.md](../../hyperframes/references/motion-principles.md)   | Velocity matching, easing philosophy, motion continuity                                                                       | Beat needs polished motion design                 |
-| [dynamic-techniques.md](../../hyperframes/references/dynamic-techniques.md) | Counter animations, data-driven visuals, dynamic content                                                                      | Beat has counters or data visualization           |
-| [video-composition.md](../../hyperframes/references/video-composition.md)   | Frame composition, color presence, scale, density rules                                                                       | General composition quality                       |
+| Resource                                                                              | What it covers                                                                                                                | Read when                                         |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [techniques.md](../../hyperframes/references/techniques.md)                           | 20 visual techniques with code: SVG path drawing, Canvas 2D, CSS 3D, kinetic type, variable fonts, MotionPath, counters       | Beat uses any of these techniques                 |
+| [text-effects.md](../../hyperframes/references/text-effects.md)                       | 24 named text animations: soft-blur-in, typewriter, kinetic-center-build, line-reveal, stagger, crossfade, shared-axis        | Beat has text animation                           |
+| [html-in-canvas-patterns.md](../../hyperframes/references/html-in-canvas-patterns.md) | HTML-in-Canvas: iPhone/MacBook mockups, liquid glass, magnetic, portal, shatter, text cursor                                  | Beat uses device mockups or WebGL effects on HTML |
+| [transitions.md](../../hyperframes/references/transitions.md)                         | Shader transition API, HyperShader.init() pattern, all 14 WebGL shaders                                                       | Beat has shader transitions                       |
+| [transitions/](../../hyperframes/references/transitions/)                             | 14 CSS transition category files: push, scale, dissolve, blur, 3D flip, light leak, distortion, grid, mechanical, destruction | Beat uses CSS transitions                         |
+| [css-patterns.md](../../hyperframes/references/css-patterns.md)                       | Text markers: highlight sweeps, hand-drawn circles, burst lines, scribble, sketchout                                          | Beat uses text emphasis/markers                   |
+| [audio-reactive.md](../../hyperframes/references/audio-reactive.md)                   | Bass→scale, mid→shape, treble→glow mappings                                                                                   | Beat reacts to music/audio                        |
+| [captions.md](../../hyperframes/references/captions.md)                               | Per-word karaoke, tone-adaptive styling, positioning                                                                          | Beat includes captions                            |
+| [typography.md](../../hyperframes/references/typography.md)                           | Font hierarchy, variable fonts, responsive type scaling                                                                       | Beat has complex typography                       |
+| [motion-principles.md](../../hyperframes/references/motion-principles.md)             | Velocity matching, easing philosophy, motion continuity                                                                       | Beat needs polished motion design                 |
+| [dynamic-techniques.md](../../hyperframes/references/dynamic-techniques.md)           | Counter animations, data-driven visuals, dynamic content                                                                      | Beat has counters or data visualization           |
+| [video-composition.md](../../hyperframes/references/video-composition.md)             | Frame composition, color presence, scale, density rules                                                                       | General composition quality                       |
 
 **Other skills you can load if needed:**
 
@@ -146,9 +129,7 @@ A beat is a SCENE, not a single entrance animation. Your GSAP timeline should ha
 - CSS CENTERING: no `transform: translate(-50%, -50%)` with GSAP transforms. Use flexbox or `xPercent/yPercent`.
 - QUERYSELECTOR: `document.getElementById("id")` with null guards. No method calls without null check.
 - CHARACTER SPANS: `display:inline-block` on spaces collapses them. Use `&nbsp;` or per-word spans.
-- COUNTERS: no `onUpdate` callbacks. Discrete `tl.set(el, {textContent: "42"}, 2.5)` at timestamps. For a 0→128K counter over 2s, that means 20–30 `tl.set()` calls along the duration — easier than it sounds, and fully seekable. See `examples/04-composed-ui/scene-05-dashboard-counters/index.html` for the canonical pattern.
-- CANVAS RENDER LOOPS: do NOT drive canvas rendering via `tl.to(proxy, {onUpdate: render})`. That pattern works during live playback but does NOT fire during `tl.seek()` (which the snapshot/render CLI uses to scrub the timeline). Result: black frames in the rendered video. Instead, use `gsap.ticker.add()` and read `tl.time()` each frame to call your render function. See `examples/07-html-in-canvas/scene-02-canvas-ascii/index.html` for the working pattern.
-- DOM MUTATION IN TIMELINE: do NOT use `tl.call(function() { /* createElement, appendChild, etc */ })` to build DOM during the timeline. Callbacks don't fire during `tl.seek()`. Build ALL DOM upfront (pre-split text spans, pre-rendered phrase wrappers stacked with `position:absolute`), then toggle visibility via opacity/display in the timeline. See `examples/01-typography/scene-01-soft-blur-in/index.html` for the multi-phrase pattern.
+- COUNTERS: no `onUpdate` callbacks. Discrete `tl.set(el, {textContent: "42"}, 2.5)` at timestamps.
 - TIMELINE: `window.__timelines["beat-N-name"] = tl` synchronously. Key = `data-composition-id`.
 - DETERMINISTIC: no `Math.random()`, `Date.now()`, `requestAnimationFrame`, `repeat:-1`.
 - Always `tl.fromTo()` not `tl.from()` for entrances.

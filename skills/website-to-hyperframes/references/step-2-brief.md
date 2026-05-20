@@ -1,6 +1,6 @@
 # Step 2: Creative Brief
 
-**First, read [capabilities-overview.md](capabilities-overview.md)** — scan the capabilities table to know what's available. You need this to tell users what's possible.
+**First, scan the Table of Contents in [capabilities.md](capabilities.md)** — the 24-row TOC tells you everything HyperFrames can do. You need this to tell users what's possible. Deep-dive specific sections only if a beat needs them.
 
 You've captured the site, read all the data, written DESIGN.md. Now you know what you're working with — the brand's colors, assets, animations, typography. Before making any creative decisions, **ask the user what they want.**
 
@@ -55,7 +55,7 @@ Frame it like this:
 > "Now that I've analyzed your site, here's what I have to work with:
 >
 > - **Brand inflection** — [2-3 sentences on what makes this brand's visual language distinctive: dominant colors, font character, mood]
-> - **Composed library** — every product UI, transition, counter, sparkline, and effect can be built from scratch using the [`examples/`](../examples/) library (81 reference scenes — kanban, chat, dashboard, terminal, shader transitions, particle fields, 3D scenes, audio-viz, etc.)
+> - **What I can compose** — every product UI, transition, counter, sparkline, and effect can be built from scratch with HyperFrames (kanban, chat, dashboard, terminal, code editor, shader transitions, particle fields, 3D scenes, audio-viz, etc.). Browse the [capabilities table](capabilities.md) for the full menu.
 > - **Brand accents available** — [1-2 most distinctive captured assets that earn a place: SVG logo for stroke-draw opener, hero illustration for a depth layer, gradient image for ambient wash]
 > - **Anything genuinely worth using as content** (rare) — [If the capture has something truly unique that can't be composed: a custom Lottie, real product video, a one-of-a-kind illustration — name it]
 >
@@ -65,18 +65,18 @@ Frame it like this:
 > - [Another — e.g., "Open with your SVG logo drawing itself stroke-by-stroke over a shader bloom that recreates your site's hero gradient — composed motion, brand colors woven in."]
 > - [Another — e.g., "Six product feature panels composed from scratch — kanban, dashboard, terminal, file tree, calendar, chat — each in your palette, with your wordmark stamped on each as identity."]
 >
-> Beyond what's in the capture, I can also create additional assets — 3D models, custom shaders, illustrations, stock footage — if anything would make the video go further. The goal is something that stops scrollers and feels alive in every frame, not something that crossfades through screenshots. Read [capabilities-overview.md](capabilities-overview.md) for the full picture of what's possible.
+> Beyond what's in the capture, I can also create additional assets — 3D models, custom shaders, illustrations, stock footage — if anything would make the video go further. The goal is something that stops scrollers and feels alive in every frame, not something that crossfades through screenshots. Read [capabilities.md](capabilities.md) for the full picture of what's possible.
 >
 > Do you have any specific moments, beats, or effects you want to see? To help you think about it, here are a few directions that would work for your specific brand:
 >
 > [Generate 2–3 example direction prompts grounded in _this_ brand's identity. Each should describe a **composed beat** that weaves in the brand inflection (color / font / accent asset). Model the _specificity_ — name the composed reference + the brand accent that decorates it.
 >
-> Good compose-first examples have the form: "[Compose X scene from examples/] in [this brand's palette/font], with [captured accent] [decorating it in this specific way]."
+> Good compose-first examples have the form: "[Compose X UI/element from divs/SVG] in [this brand's palette/font], with [captured accent] [decorating it in this specific way]."
 >
 > Bad examples — what NOT to write here:
 >
 > - "I want the hero screenshot to come in on a rotating MacBook" (asset-primary thinking — instead: "Compose the dashboard from divs and animate it inside a 3D MacBook")
-> - "Show the pricing tiers flying in one by one" (vague — instead: "Compose your 3 pricing tiers using `examples/04-composed-ui/scene-14-pricing-card-reveal/`, with your brand purple on the Pro tier")
+> - "Show the pricing tiers flying in one by one" (vague — instead: "Compose 3 pricing tier cards from divs with hover-style elevation, staggered entrance, brand purple on the Pro tier, counter-up on the price")
 > - "Start with the logo drawing itself" (might be valid as an accent on a composed opener, but it can't be the whole opener — what else is happening?)]
 >
 > You don't need a complete vision — even one or two specific moments helps me build something you'll love. Or say 'surprise me' and I'll make the creative calls based on your brand."

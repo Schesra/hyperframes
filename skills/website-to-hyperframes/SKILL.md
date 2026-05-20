@@ -42,45 +42,13 @@ Users say things like:
 
 ## Step -1: What we're actually making (REQUIRED before Step 0)
 
-You're not making *a video*. You're making something that **stops scrollers** in the first 1.5 seconds and **feels alive in every single frame** — with motion, depth, momentum, like things exist in a physical world. **Think about how to go viral.** Slow intros are for cinematic trailers; videos shipping anywhere social or feed-based need a hook that beats the 1.5-second scroll threshold.
+You're not making _a video_. You're making something that **stops scrollers** in the first 1.5 seconds and **feels alive in every single frame** — with motion, depth, momentum, like things exist in a physical world. **Think about how to go viral.** Slow intros are for cinematic trailers; videos shipping anywhere social or feed-based need a hook that beats the 1.5-second scroll threshold.
 
-**Get everything you need yourself.** Compose the load-bearing visuals — kanban boards from cards-as-divs, logos from SVG paths, gradients from shader noise, counters via `tl.set()`, dashboards from layered panels, transitions from chromatic-split or ripple shaders. You are not limited to what was captured from the website. You can paint anything a browser can render. The 81 scenes in [`examples/`](examples/) are the bar — every one composed 100% from divs/SVG/canvas, zero captured screenshots, every frame moving.
+**Get everything you need yourself.** Compose the load-bearing visuals — kanban boards from cards-as-divs, logos from SVG paths, gradients from shader noise, counters via `tl.set()`, dashboards from layered panels, transitions from chromatic-split or ripple shaders. You are not limited to what was captured from the website. You can paint anything a browser can render. Every beat should be composed 100% from divs/SVG/canvas, zero captured screenshots, every frame moving.
 
 **Captured assets are accents and decorations, not the beat itself.** The brand logo on the closer. A hero illustration as a depth layer. A gradient image painted into a parallax background. The brand mark stamped onto a composed product UI. These enhance the beats you compose; they don't replace them. The most suitable combinations weave composed motion together with captured brand inflections — but composed motion is what carries the video.
 
----
-
-### Study the Example Library (mandatory)
-
-**Read:** [examples/README.md](examples/README.md) — the HyperFrames Capability Showcase. 81 production-grade scenes for every technique HyperFrames can do, each composed 100% from divs/SVG/HTML/CSS/GSAP — zero captured screenshots, zero slideshow shortcuts.
-
-**Why this comes first:** every prior round of pipeline iteration showed agents defaulting to "screenshot + Ken Burns + voiceover" regardless of what the prompt asked for. Zero of eleven isolated component-eval runs used HTML-in-canvas, SVG path drawing, counter animations, kinetic typography, or any of HyperFrames' powerful capabilities. The skill prose has been exhausted as a lever; the lever is what you pattern-match to. These examples are that.
-
-**Mandatory:** open `examples/README.md`, then open AT LEAST 3 scene `index.html` files end-to-end before planning your storyboard. Specifically:
-
-- **One scene from `04-composed-ui/`** — pick whichever matches a UI element you'll likely show (kanban / chat / terminal / command palette / dashboard / file tree / code editor / calendar). Study the markup AND the GSAP timeline.
-- **One scene from `01-typography/`** — pick whichever matches your headline style (soft-blur-in / typewriter / kinetic-center-build / mask-reveal-up / variable-font / glitch-rgb-split / scramble-decrypt / per-word-emphasis).
-- **The "bar" scenes**: [`04-composed-ui/scene-01-kanban-board/index.html`](examples/04-composed-ui/scene-01-kanban-board/index.html) and [`04-composed-ui/scene-02-chat-with-typing/index.html`](examples/04-composed-ui/scene-02-chat-with-typing/index.html) — these set the quality bar for every other scene and demonstrate the narration-sync pattern.
-
-After reading: you should be able to answer "for each beat I'm planning, which example scenes inform it, and which of the three modes am I using?"
-
-### The three legitimate modes for using examples
-
-The library is a **reference frame**, not a template gallery. Pick the right mode per beat:
-
-1. **Copy + mutate** — when a single scene is a near-exact match for what the beat needs. Lift the scaffold (markup structure, GSAP timeline shape, easing variety), then swap content + brand colors + specific data. *Example:* your beat needs to show a kanban board → start from `04-composed-ui/scene-01-kanban-board/`, replace the "Sprint 24" content with the user's actual project, swap the blue/orange/green palette to the brand's, change task names, keep the drag-and-drop animation.
-
-2. **Recombine patterns** — when no single scene fits but 2-3 scenes have the right pieces. Pull the counter pattern from `04-05`, the marker overlay from `02-02`, the gradient text from `01-12`. Compose them yourself into something new. *Example:* a beat showing "users grew 12x" needs counter (from `04-05`) + emphasis marker (from `02-02`) + radial glow ambient (from `10-02`) — none of those scenes alone fits, but their patterns combined do.
-
-3. **Author fresh, examples as reference** — when the beat is genuinely novel and no scene is close enough. The examples still shape your taste (which easings, which motion intensities, what continuous-motion practices), but you write the markup from scratch. *Example:* a beat showing a fictional product's onboarding flow that has no direct parallel — you've read 10 example scenes by now, you internalize the conventions (CSS-locked initial states, `tl.fromTo()` for entrances, 3+ easings per scene, continuous motion through holds), and you author the beat fresh.
-
-### The non-negotiable in all 3 modes
-
-**You always customize.** Examples are NEVER the finished beat. If your beat is identifiable as "scene-01-kanban-board with content swapped" — you copied without thinking. The finished beat must look like THIS brand, in THIS narrative, with THIS data. Same scaffold, different soul.
-
-**And the screenshot rule:** if the user's prompt would lead you to use a product screenshot of an interface (kanban, chat, dashboard, etc.) as the primary visual of any beat — STOP. Open the matching scene in `examples/04-composed-ui/` and use mode 1 or 2 to build that UI from divs instead. The library exists to make this the path of least resistance.
-
-**Gate:** you've read `examples/README.md` plus at least 3 scene HTMLs, AND for each beat you're planning you can name (a) which scenes inform it and (b) which of the three modes you're using. Don't proceed to Step 0 until this is done.
+**The screenshot trap:** if the user's prompt pulls you toward using a product screenshot of an interface (kanban, chat, dashboard, terminal, etc.) as the primary visual of any beat — STOP. Build that UI from divs/SVG/CSS instead. Every prior eval round showed agents defaulting to "screenshot + Ken Burns + voiceover" regardless of what the prompt asked for, never reaching for HTML-in-canvas, SVG path drawing, counter animations, kinetic typography, or any of HyperFrames' powerful capabilities. Don't be that agent.
 
 ---
 
@@ -108,7 +76,7 @@ Write DESIGN.md — a brand cheat sheet covering the visual identity: colors, ty
 
 ## Step 2: Creative Brief
 
-**Read:** [references/step-2-brief.md](references/step-2-brief.md), [references/visual-vocabulary.md](references/visual-vocabulary.md), [references/capabilities-overview.md](references/capabilities-overview.md)
+**Read:** [references/step-2-brief.md](references/step-2-brief.md), [references/visual-vocabulary.md](references/visual-vocabulary.md), [references/capabilities.md](references/capabilities.md) (scan the Table of Contents — deep-dive sections only as needed)
 
 Parse what the user already told you in their prompt. Most prompts already specify video type, style, and what to show. Only ask about things genuinely missing — don't re-ask what they said.
 
@@ -191,16 +159,16 @@ Beat count is not in this table intentionally — it should come from the storyb
 
 ### Reference Files
 
-| File                                                                | When to read                                                                                                  |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| [step-0-capture.md](references/step-0-capture.md)                   | Step 0 — capture, read extracted data, write site summary                                                     |
-| [step-1-design.md](references/step-1-design.md)                     | Step 1 — write DESIGN.md brand cheat sheet (9 sections, 200-400 lines)                                        |
-| [step-2-brief.md](references/step-2-brief.md)                       | Step 2 — creative brief conversation with user                                                                |
-| [capabilities-overview.md](references/capabilities-overview.md)     | Step 2 — what HyperFrames can do (45-line overview). Full 704-line inventory linked inside for deep dives     |
-| [visual-vocabulary.md](references/visual-vocabulary.md)             | Step 2 & 3 — translate subjective terms to concrete techniques. Composable building blocks, not rigid presets |
-| [step-3-storyboard.md](references/step-3-storyboard.md)             | Step 3 — storyboard + script (combined) with user review gate                                                 |
-| [step-4-vo.md](references/step-4-vo.md)                             | Step 4 — TTS provider choice, generation, timing                                                              |
-| [step-5-build.md](references/step-5-build.md)                       | Step 5 — build index.html + compositions                                                                      |
-| [step-6-validate.md](references/step-6-validate.md)                 | Step 6 — lint, validate, snapshots (scaled to video length), preview                                          |
-| [techniques.md](../hyperframes/references/techniques.md)            | Steps 3 & 5 — 20 visual techniques with code patterns (adapt, don't copy-paste)                               |
-| [html-in-canvas-patterns.md](references/html-in-canvas-patterns.md) | Step 5 — complete code patterns for HTML-in-Canvas effects                                                    |
+| File                                                                               | When to read                                                                                                                                   |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| [step-0-capture.md](references/step-0-capture.md)                                  | Step 0 — capture, read extracted data, write site summary                                                                                      |
+| [step-1-design.md](references/step-1-design.md)                                    | Step 1 — write DESIGN.md brand cheat sheet (9 sections, 200-400 lines)                                                                         |
+| [step-2-brief.md](references/step-2-brief.md)                                      | Step 2 — creative brief conversation with user                                                                                                 |
+| [capabilities.md](references/capabilities.md)                                      | Steps 2 & 5 — full inventory of what HyperFrames can do (24 sections). Scan the TOC during the brief, deep-dive specific sections during build |
+| [visual-vocabulary.md](references/visual-vocabulary.md)                            | Step 2 & 3 — translate subjective terms to concrete techniques. Composable building blocks, not rigid presets                                  |
+| [step-3-storyboard.md](references/step-3-storyboard.md)                            | Step 3 — storyboard + script (combined) with user review gate                                                                                  |
+| [step-4-vo.md](references/step-4-vo.md)                                            | Step 4 — TTS provider choice, generation, timing                                                                                               |
+| [step-5-build.md](references/step-5-build.md)                                      | Step 5 — build index.html + compositions                                                                                                       |
+| [step-6-validate.md](references/step-6-validate.md)                                | Step 6 — lint, validate, snapshots (scaled to video length), preview                                                                           |
+| [techniques.md](../hyperframes/references/techniques.md)                           | Steps 3 & 5 — 20 visual techniques with code patterns (adapt, don't copy-paste)                                                                |
+| [html-in-canvas-patterns.md](../hyperframes/references/html-in-canvas-patterns.md) | Step 5 — complete code patterns for HTML-in-Canvas effects (lives in the hyperframes skill)                                                    |

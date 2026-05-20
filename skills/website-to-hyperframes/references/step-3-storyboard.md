@@ -21,32 +21,18 @@ If the user said "dark cinematic feel" — that's SLOW, not fast. If they said "
 
 ## Technique-pick checklist (REQUIRED, do this BEFORE writing beat copy)
 
-For every beat you plan, do three things:
-1. Name 2–4 techniques it will use.
-2. Cite the matching example scenes in [`examples/`](../examples/) (paths).
-3. Pick a **mode** — `copy+mutate` (one scene is a near-fit) / `recombine` (mix patterns from 2-3 scenes) / `fresh` (no scene close enough, examples as taste reference only).
+For every beat you plan, name **2–4 techniques** it will use. A beat with one technique is a slideshow frame — if you can't name two, redesign that beat.
 
-Format (one line per beat):
+Pick from the inventory in [capabilities.md](capabilities.md) and implementation patterns in [techniques.md](../../hyperframes/references/techniques.md). Examples of composable beats:
 
 ```
-Beat 3: composed kanban + counter chip + back.out entrance stagger
-  mode: recombine
-  refs:
-    - examples/04-composed-ui/scene-01-kanban-board/        (kanban scaffold + drag pattern)
-    - examples/04-composed-ui/scene-05-dashboard-counters/  (counter on the In-Progress chip)
-    - examples/_shared/easing-glossary.md                    (back.out(1.7) for entrance)
-  customize: real project name "Atlas Q3", brand purple #5b3fff, 4 cards per column with realistic backlog items
+Beat 3: composed kanban (4 cards-as-divs per column) + counter chip on In-Progress + back.out entrance stagger
+  techniques: layered panels (capabilities §1), counter via tl.set (techniques #15),
+              GSAP stagger with back.out(1.7) (techniques #4)
+  customize:  real project name "Atlas Q3", brand purple #5b3fff, realistic backlog items
 ```
 
-If a beat lists fewer than 2 cited techniques, **redesign that beat.** A beat with one technique is a slideshow frame.
-
-If a technique you want isn't in [`examples/`](../examples/), either:
-1. Pick a library technique that's close enough (preferred), or
-2. Mark the beat `mode: fresh` and note what scenes you'll use as taste/technique references even though no scene matches the content.
-
-**The non-negotiable in every mode:** examples are NEVER the finished beat. The `customize:` line above is the actual deliverable — what makes this beat THIS brand's beat instead of a recolored example. If your beat is identifiable as "scene-X with content swapped," you copied without thinking.
-
-**Forbidden:** "show the kanban" as a beat description with no technique citation, no mode, and no customize line. The library exists so you have a reference frame — not so you can stop thinking.
+**Customize is the actual deliverable** — what makes this beat THIS brand's beat. Brand colors, real content, narration-sync timing. Generic "show the kanban" with no concrete techniques, no customize plan, no brand-specific data = lazy thinking. Beats must be invented from this brand's identity, not assembled from generic UI shapes.
 
 ---
 
@@ -148,7 +134,7 @@ The `drawElementImage` Chrome API captures any live HTML/CSS as a GPU-accelerate
 - **WebGL shaders** — liquid glass refraction, shatter into fragments, portal reveal, noise distortion
 - **Post-processing** — bloom, depth-of-field, film grain, color grading
 
-When planning beats, decide which ones deserve an HTML-in-Canvas treatment vs. a standard GSAP animation. If you want it, name it in the storyboard — Step 5 will read `html-in-canvas-patterns.md` for implementation. You don't need to specify the API details here.
+When planning beats, decide which ones deserve an HTML-in-Canvas treatment vs. a standard GSAP animation. If you want it, name it in the storyboard — Step 5 will read [`../../hyperframes/references/html-in-canvas-patterns.md`](../../hyperframes/references/html-in-canvas-patterns.md) for implementation. You don't need to specify the API details here.
 
 ### SFX assignment — happens here, not in Step 5
 
@@ -195,19 +181,19 @@ Audit captured assets to pick **the ones that will decorate your composed beats*
 
 Print this table — but the "Role" column should always read as "accent / decoration / brand inflection," never as "primary visual for this beat":
 
-| Asset                          | Type       | Use it as           | Role                                        |
-| ------------------------------ | ---------- | ------------------- | ------------------------------------------- |
-| stripe-logo.svg                | SVG        | Beat 1 + Beat N     | Brand mark (opener stroke-draw, closer hold)|
-| wave-fallback-desktop.png      | Gradient   | Beat 3 bg layer     | Ambient depth wash behind composed dashboard|
-| datavizstatic3x.png            | Data viz   | SKIP                | Compose stats from `examples/09-counters-and-data/` instead |
-| enterprise-accordion-hertz.png | Photo      | SKIP                | Compose the customer-story UI from `examples/04-composed-ui/scene-15-testimonial-card/` |
-| icon-3.svg                     | Icon       | SKIP                | Decorative, too small to matter             |
+| Asset                          | Type     | Use it as       | Role                                                                            |
+| ------------------------------ | -------- | --------------- | ------------------------------------------------------------------------------- |
+| stripe-logo.svg                | SVG      | Beat 1 + Beat N | Brand mark (opener stroke-draw, closer hold)                                    |
+| wave-fallback-desktop.png      | Gradient | Beat 3 bg layer | Ambient depth wash behind composed dashboard                                    |
+| datavizstatic3x.png            | Data viz | SKIP            | Compose the stats from divs + counter animations instead                        |
+| enterprise-accordion-hertz.png | Photo    | SKIP            | Compose the customer-story UI from divs with the brand's testimonial card style |
+| icon-3.svg                     | Icon     | SKIP            | Decorative, too small to matter                                                 |
 
-Mark assets `SKIP` when their composed equivalent already exists in [`examples/`](../examples/) — that's the strong default for product UI (dashboards, kanban, chat, terminal, file tree, calendar, etc.). The library covers them all.
+Mark assets `SKIP` when a composed equivalent (dashboards, kanban, chat, terminal, file tree, calendar, pricing cards, etc.) does a better job — that's the strong default for product UI. Use the brand's _real_ data (project names, real metrics, real product copy) — not the placeholder labels a screenshot would have.
 
 **Composed bar:**
 
-- Every beat's primary visual comes from a composed scene (cite the matching `examples/` scene + mode in the beat's Composition + Accents section below)
+- Every beat's primary visual is composed from divs / SVG / CSS / GSAP at build time, not pasted from a screenshot
 - Accents are layered on top — the brand mark, gradient washes, hero illustrations — to give the composed beat this brand's inflection
 - Every beat must feel alive in every frame (continuous motion — see Per-Beat Direction below)
 - Every beat must justify its place in the bigger picture (full video)
@@ -241,7 +227,7 @@ Use the pacing you decided at the top of this step. The beat count, duration, an
 
 **Frame-filling rule:** When describing visuals per beat, specify sizes as FRAME FILL PERCENTAGES, not pixels. "Product screenshot fills 80% of frame" not "600px wide card."
 
-**Compose the load-bearing visuals yourself.** Build the kanban from cards-as-divs. Draw the logo with SVG paths. Paint the gradient with shader noise. Animate the counter with `tl.set()`. The video should feel **alive in every frame** — motion that's continuous and tangible, **like things exist in a physical world**. Captured assets (brand logo, hero illustrations, gradient backgrounds, product photography) are accents you layer onto composed beats — they decorate, they don't carry. Find the most suitable combinations: composed UIs grounded in the brand's actual colors and fonts, with captured brand marks stamped in as identity, not as content. For every beat where the storyboard pull is "show the kanban / dashboard / chat / terminal," the answer is build it from [`examples/04-composed-ui/`](../examples/04-composed-ui/), not paste a screenshot.
+**Compose the load-bearing visuals yourself.** Build the kanban from cards-as-divs. Draw the logo with SVG paths. Paint the gradient with shader noise. Animate the counter with `tl.set()`. The video should feel **alive in every frame** — motion that's continuous and tangible, **like things exist in a physical world**. Captured assets (brand logo, hero illustrations, gradient backgrounds, product photography) are accents you layer onto composed beats — they decorate, they don't carry. Find the most suitable combinations: composed UIs grounded in the brand's actual colors and fonts, with captured brand marks stamped in as identity, not as content. For every beat where the storyboard pull is "show the kanban / dashboard / chat / terminal," the answer is build it from divs and CSS, not paste a screenshot.
 
 **Opener default: fast intro to stop the scrollers.** Even a cinematic video should start with a punch — a flash, a shader bloom, a logo strike, a kinetic word build, a particle burst — anything that lands inside the first 1.0–1.5 seconds. Slow intros work for prestige trailers; videos shipping anywhere social or feed-based need a hook that beats the 1.5-second scroll threshold. Plan the opener as the most ambitious beat in the storyboard, not the gentlest one.
 
@@ -273,8 +259,8 @@ Two things, both required:
 
 **Composed (load-bearing — what carries the beat):**
 
-- Cite the matching scene from [`examples/`](../examples/) and the mode (`copy+mutate` / `recombine` / `fresh`). E.g. `examples/04-composed-ui/scene-01-kanban-board/`, mode: `copy+mutate`.
-- **Customize:** brand colors from DESIGN.md, content swap (real product data, not the example's), timing adjustments, narration-sync moments. Make this beat THIS brand's beat, not a recolored example.
+- Describe the UI / element / scene you're building from scratch: markup structure, the techniques powering it (cite [capabilities.md](capabilities.md) sections + [techniques.md](../../hyperframes/references/techniques.md) entries), key animation events. E.g. "Composed kanban: 3 column divs, 4 cards each, drag-and-drop with `back.out(1.7)` entrance stagger, counter chip on In-Progress incrementing via `tl.set()`."
+- **Brand-inflect:** brand colors from DESIGN.md, real product data (project names, real metrics, real copy — not placeholder labels), narration-sync moments. Make this beat THIS brand's beat, not a generic UI demo.
 
 **Accents (decoration only — what brand-inflects the beat):**
 

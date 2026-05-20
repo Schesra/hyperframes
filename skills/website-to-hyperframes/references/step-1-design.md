@@ -2,7 +2,7 @@
 
 DESIGN.md is a **brand-truth cheat sheet** — colors and fonts you'll **weave into your composed builds**. It is NOT a layout spec, not a moodboard, not a 400-line design system audit.
 
-The composed scenes in [`examples/`](../examples/) are the visual reference. DESIGN.md is the brand inflection you layer on top: which color is "primary," which font is "headlines," what tone the brand carries — the load-bearing knobs sub-agents flip when building beats.
+DESIGN.md is the brand inflection sub-agents layer on top of every composed beat: which color is "primary," which font is "headlines," what tone the brand carries — the load-bearing knobs they flip while building. The beats themselves are composed from divs/SVG/CSS at build time; DESIGN.md tells them in which colors and which fonts.
 
 **Target length: 60–120 lines.** Sub-agents read the Quick Reference and the Iteration Guide; everything else is over-investment.
 
@@ -26,7 +26,7 @@ Sub-agents try to use the fonts you list. If you claim "Charlie Display 700" and
 
 3–5 sentences describing the brand's visual personality. Cover: dark-first or light-first, contrast strategy, dominant visual elements (gradients, illustrations, photography, UI mockups), overall mood, what makes it distinctive vs. generic.
 
-This is the only prose section. Make it specific to *this* brand — not template-filling. A sentence that could describe any well-designed website is not useful.
+This is the only prose section. Make it specific to _this_ brand — not template-filling. A sentence that could describe any well-designed website is not useful.
 
 **Example:**
 
@@ -89,13 +89,13 @@ That's the whole typography section. If sub-agents need exact line-heights or le
 
 #### ❌ Generic vs ✅ site-specific
 
-| Generic (delete) | Site-specific (keep) |
-|---|---|
-| Use the primary brand color for CTAs. | All primary CTAs use Stripe Purple (`#533AFD`). Secondary actions use white background with `#533AFD` border + text. **There is no third button color anywhere in the system.** |
-| Maintain visual hierarchy through color contrast. | Body text is `#000000` on white, `#FFFFFF` on dark. Metadata uses `#64748D` on white only — never on dark. The brand has no mid-gray text on dark backgrounds. |
-| Use clear typographic hierarchy. | All type is sohne-var. H1 `48px`/300, H2 `32px`/300, body `14px`/400. **Never use weights above 400** — this brand has no bold variant. |
-| Use consistent spacing. | Spacing is from a fixed scale: `4, 8, 12, 16, 20, 24, 32, 40, 60` px. Section gaps are always `60–100px`. Card padding is always `32px`. No exceptions. |
-| Buttons should have rounded corners. | Buttons are `40px` tall minimum, `4px` radius, `15.5px 24px` padding. Pill-shape `9999px` radius is reserved for the floating chat trigger only. |
+| Generic (delete)                                  | Site-specific (keep)                                                                                                                                                            |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use the primary brand color for CTAs.             | All primary CTAs use Stripe Purple (`#533AFD`). Secondary actions use white background with `#533AFD` border + text. **There is no third button color anywhere in the system.** |
+| Maintain visual hierarchy through color contrast. | Body text is `#000000` on white, `#FFFFFF` on dark. Metadata uses `#64748D` on white only — never on dark. The brand has no mid-gray text on dark backgrounds.                  |
+| Use clear typographic hierarchy.                  | All type is sohne-var. H1 `48px`/300, H2 `32px`/300, body `14px`/400. **Never use weights above 400** — this brand has no bold variant.                                         |
+| Use consistent spacing.                           | Spacing is from a fixed scale: `4, 8, 12, 16, 20, 24, 32, 40, 60` px. Section gaps are always `60–100px`. Card padding is always `32px`. No exceptions.                         |
+| Buttons should have rounded corners.              | Buttons are `40px` tall minimum, `4px` radius, `15.5px 24px` padding. Pill-shape `9999px` radius is reserved for the floating chat trigger only.                                |
 
 #### One worked example (Framer — 5 rules)
 
@@ -113,7 +113,7 @@ That's the whole typography section. If sub-agents need exact line-heights or le
 5. **Glass containers** use `rgba(255,255,255,0.9)` background, `1px` border `rgba(255,255,255,0.2)`, optional `backdrop-filter: blur(8px)`. **These are the only place transparent fills appear** — everywhere else uses solid color.
 ```
 
-If your draft has a rule like "all interactive elements require visible focus states for accessibility" — delete it. Not wrong, just not load-bearing for *this* brand.
+If your draft has a rule like "all interactive elements require visible focus states for accessibility" — delete it. Not wrong, just not load-bearing for _this_ brand.
 
 ---
 
@@ -125,8 +125,8 @@ If your draft has a rule like "all interactive elements require visible focus st
 - Target **60–120 lines total.** This is a cheat sheet, not a system audit. Length is not virtue.
 - No "Assets" section — `capture/extracted/asset-descriptions.md` is the asset index.
 - No "Motion" section — the storyboard specifies motion per-beat.
-- No "Components" section beyond what fits in Quick Reference — sub-agents compose UIs from [`examples/`](../examples/), not from CSS specs in this document.
-- No "Depth & Elevation" tables — `examples/` scenes encode shadow language; you don't need to re-document it.
+- No "Components" section beyond what fits in Quick Reference — sub-agents compose UIs at build time from divs/SVG/CSS using the brand colors and fonts from this doc, not from CSS specs encoded here.
+- No "Depth & Elevation" tables — shadow language is implied by the brand's mood (heavy shadows for premium, no shadows for flat/clean); sub-agents pick appropriate values without a table.
 
 ---
 

@@ -10,6 +10,8 @@ These are NOT advanced — they're standard motion design patterns that every co
 
 **Named text animation effects** (per-character, per-word, per-line, whole-element) with exact GSAP specs are in [`text-effects.md`](text-effects.md) — 24 bundled effects, no install needed. Use those for all headline and label animations instead of inventing timing from scratch.
 
+**HTML-in-Canvas patterns** (live DOM as GPU texture: iPhone/MacBook mockups, liquid glass, magnetic, portal, shatter, text cursor — using `drawElementImage` + `layoutsubtree`) are in [`html-in-canvas-patterns.md`](html-in-canvas-patterns.md) — 504 lines, one shared boilerplate + ~6 effect recipes. Use for 1–3 hero beats per video, not every beat.
+
 ---
 
 | #   | Technique                           | What it does                                                               | Best for                                         |
