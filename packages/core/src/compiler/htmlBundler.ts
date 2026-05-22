@@ -52,7 +52,14 @@ function injectInterceptor(html: string, runtimeMode: "inline" | "placeholder" =
     tag = `<script ${RUNTIME_BOOTSTRAP_ATTR}="1">${inlinedRuntime}</script>`;
   }
   if (sanitized.includes("</head>")) {
-    return sanitized.replace("</head>", `${tag}\n</head>`);
+    // Use a function replacer so `String.prototype.replace`'s substitution
+    // patterns (`$&`, `$$`, `$'`, `` $` ``, `$1`–`$99`) inside the inlined
+    // runtime IIFE are passed through verbatim. The minified runtime
+    // contains the literal sequence `$&` as part of legitimate JS, and
+    // the older `(pattern, string)` form would expand it to the matched
+    // `</head>`, silently corrupting the runtime and breaking every
+    // timeline in the bundle with a parse-time SyntaxError.
+    return sanitized.replace("</head>", () => `${tag}\n</head>`);
   }
   const htmlOpenMatch = sanitized.match(/<html\b[^>]*>/i);
   if (htmlOpenMatch?.index != null) {
