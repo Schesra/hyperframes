@@ -1463,6 +1463,7 @@ export function initSandboxRuntimeModular(): void {
       .finally(() => {
         externalCompositionsReady = true;
         bindRootTimelineIfAvailable();
+        (window as Window & { __renderReady?: boolean }).__renderReady = true;
         runAdapters("discover", state.currentTime);
         bindMediaMetadataListeners();
         installAssetFailureDiagnostics();
@@ -1544,7 +1545,6 @@ export function initSandboxRuntimeModular(): void {
 
   window.__player = createPlayerApiCompat(player);
   (window as Window & { __playerReady?: boolean }).__playerReady = true;
-  (window as Window & { __renderReady?: boolean }).__renderReady = true;
 
   // Wire analytics event emission through the bridge
   initRuntimeAnalytics(postRuntimeMessage as (payload: unknown) => void);
@@ -1634,6 +1634,10 @@ export function initSandboxRuntimeModular(): void {
     player._timeline = state.capturedTimeline;
   }
 
+  if (state.capturedTimeline) {
+    (window as Window & { __renderReady?: boolean }).__renderReady = true;
+  }
+
   // When the bundler inlines compositions, data-composition-src is removed so
   // loadExternalCompositions() is skipped. But inline scripts registering child
   // timelines in __timelines haven't executed yet (they run in the browser's next
@@ -1646,6 +1650,7 @@ export function initSandboxRuntimeModular(): void {
       }
       // Re-run adapters to discover new elements
       runAdapters("discover", state.currentTime);
+      (window as Window & { __renderReady?: boolean }).__renderReady = true;
       postTimeline();
       postState(true);
     }, 0);

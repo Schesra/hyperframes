@@ -131,10 +131,13 @@ async function captureSnapshots(
         timeout: 10000,
       });
 
-      // Wait for runtime to initialize and sub-compositions to load
+      // Wait for the runtime to be fully render-ready: player constructed
+      // AND root timeline bound. __renderReady is only set after the timeline
+      // binding completes (synchronous or deferred), so this guarantees
+      // renderSeek will operate on the real timeline.
       const timeoutMs = opts.timeout ?? 5000;
       await page
-        .waitForFunction(() => !!(window as any).__timelines || !!(window as any).__playerReady, {
+        .waitForFunction(() => !!(window as any).__renderReady, {
           timeout: timeoutMs,
         })
         .catch(() => {});
@@ -195,7 +198,10 @@ async function captureSnapshots(
         )
         .catch(() => {});
 
-      // Extra settle time for media, fonts, and animations to initialize
+      // Wait for fonts to finish loading before capturing
+      await page.evaluate(() => document.fonts.ready).catch(() => {});
+
+      // Extra settle time for media and animations to initialize
       await new Promise((r) => setTimeout(r, 1500));
 
       // Font verification — report which fonts loaded vs fell back
@@ -312,38 +318,30 @@ async function captureSnapshots(
 
         await page.evaluate((t: number) => {
           const win = window as any;
-          if (win.__player?.seek) {
-            win.__player.seek(t);
-          } else {
-            const tls = win.__timelines;
-            if (tls) {
-              for (const key in tls) {
-                if (tls[key]?.seek) {
-                  // Sub-composition timelines run in local time relative to
-                  // their data-start. Seeking them to global time causes beats
-                  // with exit animations to appear black (global t clamps past
-                  // the exit). Compute local time: global_t - data_start.
-                  const host = document.querySelector<HTMLElement>(
-                    `[data-composition-id="${key}"]`,
-                  );
-                  const dataStart = host
-                    ? parseFloat(host.getAttribute("data-start") ?? "0") || 0
-                    : 0;
-                  const localTime = Math.max(0, t - dataStart);
-                  tls[key].pause();
-                  tls[key].seek(localTime);
-                }
-              }
+          const player = win.__player;
+          if (player) {
+            const fps = 30;
+            const safe = Math.max(0, Number(t) || 0);
+            const frame = Math.floor(safe * fps + 1e-9);
+            const quantized = frame / fps;
+            if (typeof player.renderSeek === "function") {
+              player.renderSeek(quantized);
+            } else if (typeof player.seek === "function") {
+              player.seek(quantized);
             }
+          }
+          if (win.gsap?.ticker?.tick) {
+            win.gsap.ticker.tick();
           }
         }, time);
 
-        // Wait for rendering to settle after seek
-        await page.evaluate(
-          () =>
-            new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
-        );
-        await new Promise((r) => setTimeout(r, 200));
+        // Wait for rendering to settle — match the parity harness pattern
+        await page.evaluate(`new Promise(function(r) {
+          var settled = false;
+          function finish() { if (settled) return; settled = true; r(); }
+          window.setTimeout(finish, 100);
+          requestAnimationFrame(function() { requestAnimationFrame(finish); });
+        })`);
 
         // ─── Inject real video frames over any active <video data-start> ───
         // Without this, Chrome-headless renders them blank/first-frame because
