@@ -1,6 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { usePlayerStore } from "../player";
 import { FONT_EXT } from "../utils/mediaTypes";
+import {
+  findGsapPositionAnimation,
+  commitGsapPositionDrag,
+  type GsapPositionCommitCallbacks,
+} from "./gsapDragCommit";
 import type { PatchOperation } from "../utils/sourcePatcher";
 import { trackStudioEvent } from "../utils/studioTelemetry";
 import { saveProjectFilesWithHistory } from "../utils/studioFileHistory";
@@ -82,6 +87,10 @@ export interface UseDomEditCommitsParams {
     target: HTMLElement,
     options?: { preferClipAncestor?: boolean },
   ) => Promise<DomEditSelection | null>;
+
+  // GSAP-aware drag persistence
+  selectedGsapAnimations: GsapAnimation[];
+  gsapPositionCommitCallbacks: GsapPositionCommitCallbacks | null;
 }
 
 // ── Hook ──
@@ -104,6 +113,8 @@ export function useDomEditCommits({
   clearDomSelection,
   refreshDomEditSelectionFromPreview,
   buildDomSelectionFromTarget,
+  selectedGsapAnimations,
+  gsapPositionCommitCallbacks,
 }: UseDomEditCommitsParams) {
   const resolveImportedFontAsset = useCallback(
     (fontFamilyValue: string): ImportedFontAsset | null => {
@@ -289,13 +300,29 @@ export function useDomEditCommits({
 
   const handleDomPathOffsetCommit = useCallback(
     (selection: DomEditSelection, next: { x: number; y: number }) => {
+      // When the element has a GSAP animation controlling position, write
+      // to the GSAP script instead of persisting a CSS studio offset.
+      const positionAnim = findGsapPositionAnimation(selectedGsapAnimations);
+      if (positionAnim && gsapPositionCommitCallbacks) {
+        const currentTime = usePlayerStore.getState().currentTime;
+        commitGsapPositionDrag(
+          selection,
+          positionAnim,
+          next,
+          currentTime,
+          gsapPositionCommitCallbacks,
+        );
+        return;
+      }
+
+      // Standard CSS path (no GSAP position animations on this element)
       applyStudioPathOffset(selection.element, next);
       commitPositionPatchToHtml(selection, buildPathOffsetPatches(selection.element), {
         label: "Move layer",
         coalesceKey: `path-offset:${getDomEditTargetKey(selection)}`,
       });
     },
-    [commitPositionPatchToHtml],
+    [commitPositionPatchToHtml, selectedGsapAnimations, gsapPositionCommitCallbacks],
   );
 
   const handleDomGroupPathOffsetCommit = useCallback(

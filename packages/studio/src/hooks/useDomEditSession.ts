@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { TimelineElement } from "../player";
 import {
   STUDIO_INSPECTOR_PANELS_ENABLED,
@@ -212,6 +212,7 @@ export function useDomEditSession({
   );
 
   const {
+    commitMutation: gsapCommitMutation,
     updateGsapProperty,
     updateGsapMeta,
     deleteGsapAnimation,
@@ -236,6 +237,11 @@ export function useDomEditSession({
   });
 
   // ── Commit handlers (delegated to useDomEditCommits) ──
+
+  const gsapPositionCommitCallbacks = useMemo(
+    () => (gsapCommitMutation ? { commitMutation: gsapCommitMutation } : null),
+    [gsapCommitMutation],
+  );
 
   const {
     resolveImportedFontAsset,
@@ -272,6 +278,8 @@ export function useDomEditSession({
     clearDomSelection,
     refreshDomEditSelectionFromPreview,
     buildDomSelectionFromTarget,
+    selectedGsapAnimations,
+    gsapPositionCommitCallbacks,
   });
 
   const handleGsapUpdateProperty = useCallback(
