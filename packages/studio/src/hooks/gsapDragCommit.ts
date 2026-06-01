@@ -25,6 +25,10 @@ export interface GsapPositionCommitCallbacks {
 export function findGsapPositionAnimation(animations: GsapAnimation[]): GsapAnimation | null {
   if (animations.length === 0) return null;
   for (const anim of animations) {
+    // Skip from() tweens — their properties are the FROM state, not the target
+    // position. The standard CSS offset path handles from() correctly since the
+    // CSS position IS the to-state that GSAP animates toward.
+    if (anim.method === "from") continue;
     if ("x" in anim.properties || "y" in anim.properties) return anim;
     if (anim.keyframes) {
       const hasPosition = anim.keyframes.keyframes.some(
