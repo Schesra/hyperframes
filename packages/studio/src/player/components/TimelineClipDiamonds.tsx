@@ -16,8 +16,10 @@ interface KeyframeCacheEntry {
 interface TimelineClipDiamondsProps {
   keyframesData: KeyframeCacheEntry;
   clipWidthPx: number;
+  clipHeightPx: number;
   accentColor: string;
   isSelected: boolean;
+  currentPercentage: number;
   elementId: string;
   selectedKeyframes: Set<string>;
   onClickKeyframe?: (percentage: number) => void;
@@ -26,11 +28,15 @@ interface TimelineClipDiamondsProps {
   onContextMenuKeyframe?: (e: React.MouseEvent, elementId: string, percentage: number) => void;
 }
 
+const DIAMOND_RATIO = 0.8;
+
 export const TimelineClipDiamonds = memo(function TimelineClipDiamonds({
   keyframesData,
   clipWidthPx,
+  clipHeightPx,
   accentColor,
   isSelected,
+  currentPercentage,
   elementId,
   selectedKeyframes,
   onClickKeyframe,
@@ -42,14 +48,31 @@ export const TimelineClipDiamonds = memo(function TimelineClipDiamonds({
 
   if (clipWidthPx < 20) return null;
 
+  const diamondSize = Math.round(clipHeightPx * DIAMOND_RATIO);
+  const half = diamondSize / 2;
+  const sorted = keyframesData.keyframes.slice().sort((a, b) => a.percentage - b.percentage);
+  const baseColor = isSelected ? accentColor : "#a3a3a3";
+  const baseOpacity = isSelected ? 0.4 : 0.25;
+
+  const handleClick = (e: React.MouseEvent, pct: number) => {
+    e.stopPropagation();
+    if (e.shiftKey) {
+      onShiftClickKeyframe?.(elementId, pct);
+    } else {
+      onClickKeyframe?.(pct);
+    }
+  };
+
   const handlePointerDown = (e: React.PointerEvent, pct: number) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startX: e.clientX, startPct: pct };
+    const startX = e.clientX;
 
-    const handleMove = (_me: PointerEvent) => {
-      // Track movement — visual feedback could be added here
+    const handleMove = (me: PointerEvent) => {
+      const dx = me.clientX - startX;
+      if (Math.abs(dx) > 4) {
+        dragRef.current = { startX, startPct: pct };
+      }
     };
 
     const handleUp = (ue: PointerEvent) => {
@@ -63,10 +86,6 @@ export const TimelineClipDiamonds = memo(function TimelineClipDiamonds({
       const newPct = Math.max(0, Math.min(100, Math.round(start.startPct + dPct)));
       if (Math.abs(newPct - start.startPct) > 0.5) {
         onDragKeyframe?.(start.startPct, newPct);
-      } else if (ue.shiftKey) {
-        onShiftClickKeyframe?.(elementId, start.startPct);
-      } else {
-        onClickKeyframe?.(start.startPct);
       }
     };
 
@@ -76,25 +95,53 @@ export const TimelineClipDiamonds = memo(function TimelineClipDiamonds({
 
   return (
     <div className="absolute inset-0" style={{ zIndex: 3, pointerEvents: "none" }}>
-      {keyframesData.keyframes.map((kf) => {
-        const leftPx = (kf.percentage / 100) * clipWidthPx;
+      {sorted.map((kf, i) => {
+        if (i === 0) return null;
+        const prev = sorted[i - 1]!;
+        const x1 = (prev.percentage / 100) * clipWidthPx;
+        const x2 = (kf.percentage / 100) * clipWidthPx;
+        return (
+          <div
+            key={`line-${prev.percentage}-${kf.percentage}`}
+            className="absolute"
+            style={{
+              left: x1,
+              top: "50%",
+              width: x2 - x1,
+              height: 2,
+              transform: "translateY(-1px)",
+              background: baseColor,
+              opacity: baseOpacity,
+              borderRadius: 1,
+            }}
+          />
+        );
+      })}
+
+      {sorted.map((kf) => {
+        const leftPx = (kf.percentage / 100) * clipWidthPx - half;
         const kfKey = `${elementId}:${kf.percentage}`;
         const isKfSelected = selectedKeyframes.has(kfKey);
+        const atPlayhead = isSelected && Math.abs(kf.percentage - currentPercentage) < 0.3;
+        const color = isKfSelected || atPlayhead ? accentColor : "#a3a3a3";
         return (
           <button
             key={kf.percentage}
             type="button"
             className="absolute"
             style={{
-              left: leftPx - 4,
+              left: leftPx,
               top: "50%",
               transform: "translateY(-50%)",
+              width: diamondSize,
+              height: diamondSize,
               pointerEvents: "auto",
-              padding: 2,
               background: "none",
               border: "none",
               cursor: "pointer",
+              padding: 0,
             }}
+            onClick={(e) => handleClick(e, kf.percentage)}
             onPointerDown={(e) => handlePointerDown(e, kf.percentage)}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -103,30 +150,20 @@ export const TimelineClipDiamonds = memo(function TimelineClipDiamonds({
             }}
             title={`${kf.percentage}%`}
           >
-            <svg width="8" height="8" viewBox="0 0 8 8">
+            <svg width={diamondSize} height={diamondSize} viewBox="0 0 14 14">
               {isKfSelected && (
-                <rect
-                  x="4"
-                  y="0.5"
-                  width="6.4"
-                  height="6.4"
-                  rx="1"
-                  transform="rotate(45 4 0.5)"
+                <path
+                  d="M7 0.5L13.5 7L7 13.5L0.5 7Z"
                   fill="none"
                   stroke={accentColor}
-                  strokeWidth="1"
-                  opacity={0.6}
+                  strokeWidth="1.2"
+                  opacity={0.5}
                 />
               )}
-              <rect
-                x="4"
-                y="0.5"
-                width="4.8"
-                height="4.8"
-                rx="0.7"
-                transform="rotate(45 4 0.5)"
-                fill={isKfSelected ? accentColor : isSelected ? accentColor : "#a3a3a3"}
-                opacity={isKfSelected ? 1 : isSelected ? 0.9 : 0.5}
+              <path
+                d="M7 2.5L11.5 7L7 11.5L2.5 7Z"
+                fill={color}
+                opacity={isKfSelected || atPlayhead ? 1 : 0.55}
               />
             </svg>
           </button>

@@ -16,7 +16,11 @@ import { useDomSelection } from "./useDomSelection";
 import { usePreviewInteraction } from "./usePreviewInteraction";
 import { useDomEditCommits } from "./useDomEditCommits";
 import { useGsapScriptCommits } from "./useGsapScriptCommits";
-import { useGsapAnimationsForElement, useGsapCacheVersion } from "./useGsapTweenCache";
+import {
+  useGsapAnimationsForElement,
+  useGsapCacheVersion,
+  usePopulateKeyframeCacheForFile,
+} from "./useGsapTweenCache";
 import { tryGsapDragIntercept } from "./gsapRuntimeBridge";
 
 // ── Types ──
@@ -199,13 +203,21 @@ export function useDomEditSession({
 
   const { version: gsapCacheVersion, bump: bumpGsapCache } = useGsapCacheVersion();
 
+  const gsapSourceFile = domEditSelection?.sourceFile || activeCompPath || "index.html";
+
+  usePopulateKeyframeCacheForFile(
+    STUDIO_GSAP_PANEL_ENABLED ? (projectId ?? null) : null,
+    gsapSourceFile,
+    gsapCacheVersion,
+  );
+
   const {
     animations: selectedGsapAnimations,
     multipleTimelines: gsapMultipleTimelines,
     unsupportedTimelinePattern: gsapUnsupportedTimelinePattern,
   } = useGsapAnimationsForElement(
     STUDIO_GSAP_PANEL_ENABLED ? (projectId ?? null) : null,
-    domEditSelection?.sourceFile || activeCompPath || "index.html",
+    gsapSourceFile,
     domEditSelection
       ? { id: domEditSelection.id ?? null, selector: domEditSelection.selector ?? null }
       : null,
@@ -281,18 +293,16 @@ export function useDomEditSession({
   // interpolated position from the iframe runtime and commit via the GSAP
   // script mutation path instead of the CSS translate offset.
   const handleGsapAwarePathOffsetCommit = useCallback(
-    (selection: DomEditSelection, next: { x: number; y: number }) => {
-      if (
-        gsapCommitMutation &&
-        tryGsapDragIntercept(
+    async (selection: DomEditSelection, next: { x: number; y: number }) => {
+      if (gsapCommitMutation) {
+        const handled = await tryGsapDragIntercept(
           selection,
           next,
           selectedGsapAnimations,
           previewIframeRef.current,
           gsapCommitMutation,
-        )
-      ) {
-        return;
+        );
+        if (handled) return;
       }
       handleDomPathOffsetCommit(selection, next);
     },

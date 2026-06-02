@@ -74,6 +74,7 @@ interface TimelineProps {
   onDeleteKeyframe?: (elementId: string, percentage: number) => void;
   onChangeKeyframeEase?: (elementId: string, percentage: number, ease: string) => void;
   onMoveKeyframe?: (element: TimelineElement, oldPct: number, newPct: number) => void;
+  onToggleKeyframeAtPlayhead?: (element: TimelineElement) => void;
   theme?: Partial<TimelineTheme>;
 }
 
@@ -93,6 +94,7 @@ export const Timeline = memo(function Timeline({
   onDeleteKeyframe,
   onChangeKeyframeEase,
   onMoveKeyframe,
+  onToggleKeyframeAtPlayhead,
   theme: themeOverrides,
 }: TimelineProps = {}) {
   const theme = useMemo(() => ({ ...defaultTimelineTheme, ...themeOverrides }), [themeOverrides]);
@@ -494,10 +496,15 @@ export const Timeline = memo(function Timeline({
           getTrackStyle={getTrackStyle}
           keyframeCache={keyframeCache}
           selectedKeyframes={selectedKeyframes}
+          currentTime={currentTime}
+          onToggleKeyframeAtPlayhead={onToggleKeyframeAtPlayhead}
           onClickKeyframe={(el, pct) => {
             usePlayerStore.getState().clearSelectedKeyframes();
+            const elKey = el.key ?? el.id;
+            setSelectedElementId(elKey);
+            onSelectElement?.(el);
             const absTime = el.start + (pct / 100) * el.duration;
-            usePlayerStore.getState().setCurrentTime(absTime);
+            onSeek?.(absTime);
           }}
           onShiftClickKeyframe={(elId, pct) => {
             toggleSelectedKeyframe(`${elId}:${pct}`);

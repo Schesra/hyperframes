@@ -72,21 +72,25 @@ async function mutateGsapScript(
   }
 }
 
-/** Read the current keyframe cache entry for an element from the player store. */
+function buildCacheKey(sourceFile: string, elementId: string): string {
+  return `${sourceFile}#${elementId}`;
+}
+
 function readKeyframeSnapshot(
+  sourceFile: string,
   elementId: string | null | undefined,
 ): KeyframeCacheEntry | undefined {
   if (!elementId) return undefined;
-  return usePlayerStore.getState().keyframeCache.get(elementId);
+  return usePlayerStore.getState().keyframeCache.get(buildCacheKey(sourceFile, elementId));
 }
 
-/** Write a keyframe cache entry (or clear it) in the player store. */
 function writeKeyframeCache(
+  sourceFile: string,
   elementId: string | null | undefined,
   data: KeyframeCacheEntry | undefined,
 ): void {
   if (!elementId) return;
-  usePlayerStore.getState().setKeyframeCache(elementId, data);
+  usePlayerStore.getState().setKeyframeCache(buildCacheKey(sourceFile, elementId), data);
 }
 
 interface GsapScriptCommitsParams {
@@ -132,7 +136,13 @@ export function useGsapScriptCommits({
     async (
       selection: DomEditSelection,
       mutation: Record<string, unknown>,
-      options: { label: string; coalesceKey?: string; softReload?: boolean },
+      options: {
+        label: string;
+        coalesceKey?: string;
+        softReload?: boolean;
+        skipReload?: boolean;
+        beforeReload?: () => void;
+      },
     ) => {
       const pid = projectIdRef.current;
       if (!pid) return;
@@ -153,6 +163,10 @@ export function useGsapScriptCommits({
       }
 
       onCacheInvalidate();
+
+      if (options.skipReload) return;
+
+      options.beforeReload?.();
 
       if (options.softReload && result.scriptText) {
         if (!applySoftReload(previewIframeRef.current, result.scriptText)) {
@@ -380,16 +394,17 @@ export function useGsapScriptCommits({
       property: string,
       value: number | string,
     ) => {
+      const sf = selection.sourceFile || activeCompPath || "index.html";
       const elementId = selection.id;
       void executeOptimistic<KeyframeCacheEntry | undefined>({
         apply: () => {
-          const prev = readKeyframeSnapshot(elementId);
+          const prev = readKeyframeSnapshot(sf, elementId);
           if (prev) {
             const newKeyframes = [
               ...prev.keyframes,
               { percentage, properties: { [property]: value } },
             ].sort((a, b) => a.percentage - b.percentage);
-            writeKeyframeCache(elementId, { ...prev, keyframes: newKeyframes });
+            writeKeyframeCache(sf, elementId, { ...prev, keyframes: newKeyframes });
           }
           return prev;
         },
@@ -400,22 +415,23 @@ export function useGsapScriptCommits({
             { label: `Add keyframe at ${percentage}%`, softReload: true },
           ),
         rollback: (prev) => {
-          writeKeyframeCache(elementId, prev);
+          writeKeyframeCache(sf, elementId, prev);
         },
       });
     },
-    [commitMutation],
+    [commitMutation, activeCompPath],
   );
 
   const removeKeyframe = useCallback(
     (selection: DomEditSelection, animationId: string, percentage: number) => {
+      const sf = selection.sourceFile || activeCompPath || "index.html";
       const elementId = selection.id;
       void executeOptimistic<KeyframeCacheEntry | undefined>({
         apply: () => {
-          const prev = readKeyframeSnapshot(elementId);
+          const prev = readKeyframeSnapshot(sf, elementId);
           if (prev) {
             const newKeyframes = prev.keyframes.filter((kf) => kf.percentage !== percentage);
-            writeKeyframeCache(elementId, { ...prev, keyframes: newKeyframes });
+            writeKeyframeCache(sf, elementId, { ...prev, keyframes: newKeyframes });
           }
           return prev;
         },
@@ -426,23 +442,22 @@ export function useGsapScriptCommits({
             { label: `Remove keyframe at ${percentage}%`, softReload: true },
           ),
         rollback: (prev) => {
-          writeKeyframeCache(elementId, prev);
+          writeKeyframeCache(sf, elementId, prev);
         },
       });
     },
-    [commitMutation],
+    [commitMutation, activeCompPath],
   );
 
   const convertToKeyframes = useCallback(
     (selection: DomEditSelection, animationId: string) => {
+      const sf = selection.sourceFile || activeCompPath || "index.html";
       const elementId = selection.id;
       void executeOptimistic<KeyframeCacheEntry | undefined>({
         apply: () => {
-          const prev = readKeyframeSnapshot(elementId);
+          const prev = readKeyframeSnapshot(sf, elementId);
           if (!prev) {
-            // Seed a minimal percentage-format entry so the UI shows keyframe
-            // diamonds immediately, before the server responds.
-            writeKeyframeCache(elementId, {
+            writeKeyframeCache(sf, elementId, {
               format: "percentage",
               keyframes: [
                 { percentage: 0, properties: {} },
@@ -459,11 +474,11 @@ export function useGsapScriptCommits({
             { label: "Convert to keyframes" },
           ),
         rollback: (prev) => {
-          writeKeyframeCache(elementId, prev);
+          writeKeyframeCache(sf, elementId, prev);
         },
       });
     },
-    [commitMutation],
+    [commitMutation, activeCompPath],
   );
 
   const removeAllKeyframes = useCallback(

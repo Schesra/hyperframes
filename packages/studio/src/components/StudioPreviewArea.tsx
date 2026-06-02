@@ -5,6 +5,7 @@ import { CaptionTimeline } from "../captions/components/CaptionTimeline";
 import { DomEditOverlay } from "./editor/DomEditOverlay";
 import { StudioFeedbackBar } from "./StudioFeedbackBar";
 import type { TimelineElement } from "../player";
+import { usePlayerStore } from "../player/store/playerStore";
 import type { BlockedTimelineEditIntent } from "../player/components/timelineEditing";
 import {
   STUDIO_INSPECTOR_PANELS_ENABLED,
@@ -105,6 +106,7 @@ export function StudioPreviewArea({
     handleGsapRemoveKeyframe,
     handleGsapUpdateMeta,
     handleGsapAddKeyframe,
+    handleGsapConvertToKeyframes,
   } = useDomEditContext();
 
   return (
@@ -142,6 +144,32 @@ export function StudioPreviewArea({
             handleGsapRemoveKeyframe(anim.id, oldPct);
             for (const [prop, val] of Object.entries(kf.properties)) {
               handleGsapAddKeyframe(anim.id, newPct, prop, val);
+            }
+          }}
+          onToggleKeyframeAtPlayhead={(el) => {
+            const currentTime = usePlayerStore.getState().currentTime;
+            const pct =
+              el.duration > 0
+                ? Math.max(
+                    0,
+                    Math.min(100, Math.round(((currentTime - el.start) / el.duration) * 100)),
+                  )
+                : 0;
+            const anim = selectedGsapAnimations.find((a) => a.keyframes);
+            if (anim?.keyframes) {
+              const existing = anim.keyframes.keyframes.find(
+                (k) => Math.abs(k.percentage - pct) <= 1,
+              );
+              if (existing) {
+                handleGsapRemoveKeyframe(anim.id, existing.percentage);
+              } else {
+                handleGsapAddKeyframe(anim.id, pct, "x", 0);
+              }
+            } else {
+              const flatAnim = selectedGsapAnimations.find(
+                (a) => "x" in a.properties || "y" in a.properties,
+              );
+              if (flatAnim) handleGsapConvertToKeyframes(flatAnim.id);
             }
           }}
           onCompIdToSrcChange={setCompIdToSrc}

@@ -62,10 +62,12 @@ interface TimelineCanvasProps {
   getTrackStyle: (tag: string) => TrackVisualStyle;
   keyframeCache?: Map<string, KeyframeCacheEntry>;
   selectedKeyframes: Set<string>;
+  currentTime: number;
   onClickKeyframe?: (element: TimelineElement, percentage: number) => void;
   onShiftClickKeyframe?: (elementId: string, percentage: number) => void;
   onDragKeyframe?: (element: TimelineElement, oldPct: number, newPct: number) => void;
   onContextMenuKeyframe?: (e: React.MouseEvent, elementId: string, percentage: number) => void;
+  onToggleKeyframeAtPlayhead?: (element: TimelineElement) => void;
 }
 
 export const TimelineCanvas = memo(function TimelineCanvas({
@@ -109,10 +111,12 @@ export const TimelineCanvas = memo(function TimelineCanvas({
   getTrackStyle,
   keyframeCache,
   selectedKeyframes,
+  currentTime,
   onClickKeyframe,
   onShiftClickKeyframe,
   onDragKeyframe,
   onContextMenuKeyframe,
+  onToggleKeyframeAtPlayhead: _onToggleKeyframeAtPlayhead,
 }: TimelineCanvasProps) {
   const draggedElement = draggedClip?.element ?? null;
   const activeDraggedElement =
@@ -346,8 +350,14 @@ export const TimelineCanvas = memo(function TimelineCanvas({
                       <TimelineClipDiamonds
                         keyframesData={keyframeCache.get(elementKey)!}
                         clipWidthPx={Math.max(previewElement.duration * pps, 4)}
+                        clipHeightPx={TRACK_H - 2 * CLIP_Y}
                         accentColor={clipStyle.accent}
                         isSelected={isSelected}
+                        currentPercentage={
+                          previewElement.duration > 0
+                            ? ((currentTime - previewElement.start) / previewElement.duration) * 100
+                            : 0
+                        }
                         elementId={elementKey}
                         selectedKeyframes={selectedKeyframes}
                         onClickKeyframe={(pct) => onClickKeyframe?.(previewElement, pct)}

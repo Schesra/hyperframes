@@ -482,12 +482,15 @@ export function StudioApp() {
     timelineVisible,
     toggleTimelineVisibility,
   });
-
   if (resolving || waitingForServer || !projectId) {
     return <StudioSplash waiting={waitingForServer} />;
   }
-
-  const timelineToolbar = <TimelineToolbar toggleTimelineVisibility={toggleTimelineVisibility} />;
+  const timelineToolbar = (
+    <TimelineToolbar
+      toggleTimelineVisibility={toggleTimelineVisibility}
+      domEditSession={domEditSession}
+    />
+  );
   return (
     <StudioProvider value={studioCtxValue}>
       <PanelLayoutProvider value={panelLayout}>
@@ -552,7 +555,6 @@ export function StudioApp() {
               {lintModal !== null && (
                 <LintModal findings={lintModal} projectId={projectId} onClose={closeLintModal} />
               )}
-
               {consoleErrors !== null && consoleErrors.length > 0 && (
                 <LintModal
                   findings={consoleErrors}
@@ -560,7 +562,6 @@ export function StudioApp() {
                   onClose={() => setConsoleErrors(null)}
                 />
               )}
-
               {domEditSession.agentModalOpen && domEditSession.domEditSelection && (
                 <AskAgentModal
                   selectionLabel={domEditSession.domEditSelection.label}
@@ -579,7 +580,6 @@ export function StudioApp() {
               )}
 
               {dragOverlay.active && <StudioGlobalDragOverlay />}
-
               {appToast && (
                 <div
                   className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-[91] px-4 py-2 rounded-lg border text-sm shadow-lg animate-in fade-in slide-in-from-bottom-2 ${
