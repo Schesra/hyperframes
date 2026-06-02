@@ -1277,10 +1277,24 @@ function resolveConversionProps(
   resolvedFromValues?: Record<string, number | string>,
 ): { fromProps: Record<string, number | string>; toProps: Record<string, number | string> } {
   if (anim.method === "to") {
-    return { fromProps: resolvedFromValues ?? {}, toProps: { ...anim.properties } };
+    if (resolvedFromValues) {
+      return { fromProps: resolvedFromValues, toProps: { ...anim.properties } };
+    }
+    const zeroedFrom: Record<string, number | string> = {};
+    for (const [key, val] of Object.entries(anim.properties)) {
+      if (val != null) zeroedFrom[key] = typeof val === "number" ? 0 : val;
+    }
+    return { fromProps: zeroedFrom, toProps: { ...anim.properties } };
   }
   if (anim.method === "from") {
-    return { fromProps: { ...anim.properties }, toProps: resolvedFromValues ?? {} };
+    if (resolvedFromValues) {
+      return { fromProps: { ...anim.properties }, toProps: resolvedFromValues };
+    }
+    const zeroedTo: Record<string, number | string> = {};
+    for (const [key, val] of Object.entries(anim.properties)) {
+      if (val != null) zeroedTo[key] = typeof val === "number" ? 0 : val;
+    }
+    return { fromProps: { ...anim.properties }, toProps: zeroedTo };
   }
   // fromTo
   return { fromProps: { ...(anim.fromProperties ?? {}) }, toProps: { ...anim.properties } };
