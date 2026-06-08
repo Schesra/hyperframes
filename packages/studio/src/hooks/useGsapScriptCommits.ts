@@ -201,11 +201,13 @@ export function useGsapScriptCommits({
         });
       }
 
-      onCacheInvalidate();
-
       if (result.after != null) {
         onFileContentChanged?.(targetPath, result.after);
       }
+
+      if (options.skipReload) return;
+
+      onCacheInvalidate();
 
       if (result.parsed?.animations) {
         updateKeyframeCacheFromParsed(
@@ -215,8 +217,6 @@ export function useGsapScriptCommits({
           mutation,
         );
       }
-
-      if (options.skipReload) return;
 
       options.beforeReload?.();
 
