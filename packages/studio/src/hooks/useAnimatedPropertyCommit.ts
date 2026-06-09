@@ -112,15 +112,26 @@ export function useAnimatedPropertyCommit(deps: CommitAnimatedPropertyDeps) {
       }
       backfillDefaults[property] = typeof value === "number" ? value : value;
 
+      const existingKf = anim.keyframes?.keyframes.some(
+        (kf) => Math.abs(kf.percentage - pct) < 0.05,
+      );
+
       await gsapCommitMutation(
         selection,
-        {
-          type: "add-keyframe",
-          animationId: anim.id,
-          percentage: pct,
-          properties,
-          backfillDefaults,
-        },
+        existingKf
+          ? {
+              type: "update-keyframe",
+              animationId: anim.id,
+              percentage: pct,
+              properties,
+            }
+          : {
+              type: "add-keyframe",
+              animationId: anim.id,
+              percentage: pct,
+              properties,
+              backfillDefaults,
+            },
         { label: `Edit ${property} (keyframe ${pct}%)`, softReload: true },
       );
     },

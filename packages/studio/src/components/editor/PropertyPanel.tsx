@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Eye, Layers, Move, X } from "../../icons/SystemIcons";
 import { useStudioContext } from "../../contexts/StudioContext";
 import { readStudioBoxSize, readStudioPathOffset, readStudioRotation } from "./manualEdits";
@@ -17,7 +17,7 @@ import { GsapAnimationSection } from "./GsapAnimationSection";
 import { PropertyPanel3dTransform } from "./propertyPanel3dTransform";
 import { KeyframeNavigation } from "./KeyframeNavigation";
 import { STUDIO_GSAP_PANEL_ENABLED, STUDIO_KEYFRAMES_ENABLED } from "./manualEditingAvailability";
-import { usePlayerStore } from "../../player";
+import { usePlayerStore, liveTime } from "../../player";
 import { TimingSection } from "./propertyPanelTimingSection";
 import { type PropertyPanelProps } from "./propertyPanelHelpers";
 
@@ -88,7 +88,26 @@ export const PropertyPanel = memo(function PropertyPanel({
   const { showToast } = useStudioContext();
   const [clipboardCopied, setClipboardCopied] = useState(false);
   const clipboardTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const currentTime = usePlayerStore((s) => s.currentTime);
+  const storeTime = usePlayerStore((s) => s.currentTime);
+  const [liveRenderTime, setLiveRenderTime] = useState(storeTime);
+  useEffect(() => {
+    setLiveRenderTime(storeTime);
+  }, [storeTime]);
+  useEffect(() => {
+    let rafId = 0;
+    const unsub = liveTime.subscribe((t) => {
+      if (!rafId)
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          setLiveRenderTime(t);
+        });
+    });
+    return () => {
+      unsub();
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+  const currentTime = liveRenderTime;
 
   if (!element) {
     return (
