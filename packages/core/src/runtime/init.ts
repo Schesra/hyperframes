@@ -982,8 +982,9 @@ export function initSandboxRuntimeModular(): void {
     });
     // Stamp data-start / data-duration on GSAP-targeted elements that lack
     // them so the Studio timeline can discover individual animated elements.
-    // Only in Studio — production renders must not mutate element timing.
-    if ((window as Record<string, unknown>).__hfStudioManualEditsApply) {
+    // Only when embedded in an iframe (Studio preview) — production renders
+    // run as the top-level page and must not mutate element timing.
+    if (window.parent !== window) {
       const rootComp = resolveRootCompositionElement();
       const rootDuration = boundDuration > 0 ? boundDuration : 0;
       const dur = String(rootDuration > 0 ? rootDuration : 1);
