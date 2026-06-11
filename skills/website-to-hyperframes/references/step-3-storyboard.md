@@ -20,6 +20,22 @@ If any of those rows are blank, the storyboard cannot land. Go back to the brief
 
 **The single-sentence test:** _"What makes this video different from a generic [video type] for any [industry] brand?"_ If you can't answer it from the rows above, the concept isn't sharp enough. Sharpen it before writing pacing or beats.
 
+### Optional: name a story archetype as the structural spine
+
+The Arc field above (Problem→Solution / Reveal / Demonstration / Vibe / Comparison) is the **primary frame** for w2h. It works for any video type — social ads, brand reels, tours, launches, demos.
+
+If the user explicitly wants a **launch-style** or **persuasion-heavy** reel — a product launch trailer, a category-creation announcement, a transformation story — the five named archetypes below give the storyboard a more specific structural spine. They are optional and SECONDARY to the Arc field. Pick one only when the user's brief reads as persuasion-led, not when it's a general brand piece.
+
+- **PAS** (Pain → Agitate → Solve) — when the product solves a sharp, named pain the audience feels. Open on the friction, intensify it briefly, reveal the product as relief. Best for B2B SaaS where the pain is structural (manual workflow, tool sprawl, broken handoff).
+- **BAB** (Before → After → Bridge) — when the transformation IS the story. Show the friction state, contrast with the desired state, walk the audience across the bridge (the product's workflow) that gets there. The bridge is the proof — viewers leave knowing the steps, not just the value. Shallower emotional curve than PAS; proof-heavier than Future-Pacing.
+- **Future-Pacing** — when the brand sells an **aspirational outcome** the viewer wants to inhabit. Open in the future state; reverse-engineer the product's role in getting there. Best for category-defining or vision-forward brands (`"Imagine if your team..."` openings).
+- **Demo-Loop** — when the product itself is the hook. Open mid-product-use; the cycle of action → result IS the story. Best for tools whose value is immediately visible (creative apps, agent tools, anything with a satisfying loop).
+- **Feature-Benefit-Cascade** — when the product has 3–5 distinct features that each deserve a beat. A rapid sequence of feature → benefit pairs, each ~3–5s, building cumulative product surface. Best for mature products with broad surface where no single feature is the wow.
+
+If you pick an archetype, **write it on the same line as the Arc field** so the worker reads both: `**Arc:** Demonstration / Demo-Loop — three workflow loops, each ending in a "ship" moment.`
+
+Skip the archetype entirely for general brand reels, social ads without a sales motion, atmospheric pieces, and "show what it is" videos. The Arc field alone is enough.
+
 ---
 
 ## Second decision: PACING
@@ -291,6 +307,23 @@ Use the pacing you decided at the top of this step. The beat count, duration, an
 
 **Opener default: fast intro to stop the scrollers.** Even a cinematic video should start with a punch — a flash, a shader bloom, a logo strike, a kinetic word build, a particle burst — anything that lands inside the first 1.0–1.5 seconds. Slow intros work for prestige trailers; videos shipping anywhere social or feed-based need a hook that beats the 1.5-second scroll threshold. Plan the opener as the most ambitious beat in the storyboard, not the gentlest one.
 
+**Named hook patterns** — pick one and write it into the opener beat's concept. Each is a known scroll-stopper; the choice depends on the brand and the message:
+
+| Hook                       | When to use                                                            | Example shape                                                                  |
+| -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Shocking statistic**     | A number that contradicts assumption, or that the viewer must verify   | `"82% of teams ship slower than they think."`                                  |
+| **Imagine**                | Future-state aspiration that pulls the viewer into a desired scenario  | `"Imagine your team ships on Monday, not Friday."`                             |
+| **Direct address**         | Speak straight to the viewer's role, no setup                          | `"Designers — stop pasting Figma comments into Slack."`                        |
+| **Pain validation**        | Name the unspoken frustration the audience already feels               | `"You opened 14 tabs to plan one sprint. Again."`                              |
+| **Visceral metaphor**      | A physical / sensory image that maps to an abstract product behavior   | `"Your roadmap is a bonfire. Most teams pour gasoline on it."`                 |
+| **Rhetorical question**    | A question with an implied answer that creates investment in the next beat | `"What if context-switching cost you nothing?"`                                |
+| **Category announcement**  | Stake a new category or repositioning that the rest of the video earns | `"This is the first IDE built for AI handoffs."`                               |
+| **Visual spectacle**       | The shot itself is the hook — no copy, no claim, just a striking image | A logo dissolving into a particle storm; a product 3D-rotating through liquid glass |
+| **Question invitation**    | Invite the viewer to participate (a poll, a comparison, a self-rating) | `"How many tools did you use this morning? Count them. We'll wait."`           |
+| **Trend positioning**      | Anchor to a cultural / market shift the viewer is already aware of     | `"Every AI tool ships an agent now. Most of them lie. We don't."`              |
+
+Most of the ten map cleanly onto a single opener beat's VO line + the visual that lands it. **Don't combine more than one hook per opener** — stacking hooks ("imagine + pain + statistic") fragments the cold-open and loses the scroll. Pick the one that fits the brand voice (clinical fintech ≠ visceral metaphor) and the platform (TikTok feed ≠ enterprise landing page).
+
 **CTA / closing beats** are consistently the weakest. Agents treat them as "logo + tagline + done." A good CTA should: make the logo entrance an event (SVG path draw, scale with overshoot, or anything awesome really), have continuous background motion, and hold only 2-3 seconds after the last spoken word — NOT 8-10 seconds of silence.
 
 **VO start timing — decide here, not in Step 5.** When does the narration actually begin relative to the first visual? Options: (a) VO starts over the visual intro (heard before content settles — creates urgency), (b) VO starts after the visual intro settles (viewer sees the opening, then hears the voice — creates drama), (c) a few seconds of music-only visual before VO enters. None of these is a default — pick based on the brand and the opening beat's concept. State the intended narration start time explicitly in the storyboard's Global Direction, e.g. `**Narration start:** 0.8s (after hero intro settles)`. Step 5 wires this as the audio element's `data-start`.
@@ -357,6 +390,16 @@ A beat is a SCENE with internal life, not a single entrance followed by a static
 If your animation sequence only has events in the first 2 seconds and the beat lasts longer, the rest is dead air. Plan moments across the full duration. Nothing should sit unchanged for more than ~2 seconds — if an element is on screen, give it continuous motion (drift, breathe, pulse, parallax).
 
 Describe the feel precisely: "snappy overshoot bounce settling into place" → back.out; "slow heavy drift" → power1.inOut. Vague adjectives are useless.
+
+### Named motion patterns — write these into the storyboard, the worker implements
+
+The storyboard can NAME these by ID; the beat worker implements them with the right GSAP shape. Naming them in prose means the worker doesn't have to invent the rhythm — they just code what's already specified.
+
+- **`stillness-before-climax`** — a deliberate 0.3–0.75s pause between a major action and its confirmation. The silence creates narrative tension before the landing. Example: "icons collapse at 2.2s, demo pops out at 2.95s (0.75s gap)" or "Step 3 activates at 3.33s, button enters at 3.52s (0.19s buffer)." A scene that jumps directly from action to result loses its dramatic comma. **Schedule the pause explicitly** in the storyboard's per-beat choreography — `[pause 0.5s]` between the trigger and the response.
+
+- **`exit-75-percent`** — an exit animation lasts roughly 75% of its entry duration. Not 50% (reads as a flash), not 100% (sluggish, blocks the next beat's entrance). Arrival is deliberate; departure is swift but not abrupt. Example: a title enters in 0.8s → exits in 0.6s.
+
+- **`multiplicative-breathing`** (not yoyo) — hero images and background elements get a continuous ±2–5% scale breath layered ON TOP of their settled scale, not a yoyo tween. The form is `scale = final * (1 + Math.sin(t * freq) * amp)` driven by `onUpdate` reading `tl.time()`. **Forbid yoyo tweens on the same property** — they overwrite the entry scale and snap the element back to the wrong baseline. Minimum amplitude ±6px or ±2–5% scale; sub-3px micro-floats are invisible at video resolution. The build worker writes the JS; the storyboard just names `multiplicative-breathing on .hero-card across the hold phase`.
 
 ---
 
