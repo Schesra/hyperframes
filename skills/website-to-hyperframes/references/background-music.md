@@ -20,15 +20,17 @@ Music is **optional**. Most product demos do not need it. The decision to add mu
 
 HyperFrames has **no automatic ducking** — you set static volumes per audio element. Layer levels so nothing fights the voice:
 
-| Layer                     | data-volume |
-| ------------------------- | ----------- |
-| Narration / VO            | 1.0         |
-| Background music under VO | 0.4 – 0.6   |
-| Sound effects (hits)      | 0.2 – 0.35  |
-| Ambient bed               | 0.08 – 0.2  |
-| Pure music (no VO)        | 0.7 – 0.9   |
+| Layer                                | data-volume                  |
+| ------------------------------------ | ---------------------------- |
+| Narration / VO                       | 1.0 (always)                 |
+| Background music under VO            | 0.4 – 0.6                    |
+| Sound effects (hits)                 | natural (omit `data-volume`) |
+| Ambient bed (felt, not heard)        | 0.08 – 0.2                   |
+| Pure music (no VO)                   | 0.7 – 0.9                    |
 
 **Pure-music videos** (brand reels with no spoken narration) need music at near-full volume (0.7–0.9) or it disappears into the encoder noise floor. The `0.4–0.6` rule is for **music UNDER VO** only.
+
+**SFX volume is natural by default — don't pre-duck them.** The canonical model lives in [`../../hyperframes/references/sound-effects.md`](../../hyperframes/references/sound-effects.md) ("Volume — default is natural, no auto-duck"). Catalog clips are loudness-normalized at the file level; omitting `data-volume` lets each SFX ring at the level the catalog committed to, even when stacking with VO or other SFX. The one exception in this table is the ambient bed (~0.1 explicit) — a "felt, not heard" texture is the rare case where a per-clip override is intentional.
 
 ## Manual ducking (when music + VO overlap)
 

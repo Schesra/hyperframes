@@ -360,7 +360,7 @@ window.addEventListener("hf-seek", (e) => {
 
 ### Audio mixer
 
-- `<audio id="..." data-start="..." data-duration="..." data-volume="0.8" data-track-index="2" src="...">`
+- `<audio id="..." data-start="..." data-duration="..." data-track-index="2" src="...">` (`data-volume` is optional — defaults to natural / 1.0; only set it as a per-clip override; see [`background-music.md`](./background-music.md) and [`../../hyperframes/references/sound-effects.md`](../../hyperframes/references/sound-effects.md))
 - Multiple tracks mixed with `amix normalize=0` + per-track adelay + volume
 - Master audioGain from EngineConfig
 - Output: AAC 192kbps
