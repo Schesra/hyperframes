@@ -1,0 +1,89 @@
+<!--
+  Beat skeleton — copy this verbatim into compositions/beat-N-<slug>.html and
+  fill the named placeholders. Every attribute below is load-bearing; the
+  inline comments name the landmine each pattern defuses. Cross-reference
+  with references/beat-builder-guide.md (full guide) and
+  references/step-5-build.md (landmines #1–12) for the rationale.
+
+  Do NOT keep this file inside a project's compositions/ dir — it would be
+  scanned as a beat. Copy it OUT (rename to beat-N-<slug>.html) before
+  editing.
+
+  Three strings MUST be identical across this file: the root
+  <div data-composition-id="...">, the window.__timelines["..."] key, and the
+  dispatch packet's BEAT_FILE slug. Drift = beat ships black.
+-->
+<template id="beat-N-SLUG-template">
+  <style>
+    /* Scope every selector with a beat-prefix class (e.g. .bN-title) so styles
+       don't leak into sibling beat compositions. Landmine #6 in
+       step-5-build.md: a generic `.cap` or `.scene` class can silently
+       hide elements when a sibling composition uses the same name. */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    .bN-root {
+      width: 1920px; height: 1080px;
+      position: relative;
+      overflow: hidden;
+      /* DO NOT set `background:` on the root — sub-comp root background CSS
+         does NOT paint at render time (landmine #10). Use the full-bleed bg
+         child div below instead. */
+    }
+    .bN-bg { position: absolute; inset: 0; background: #YOUR_BG_HEX; z-index: 0; }
+    .bN-title {
+      font-size: 96px; line-height: 1.05; font-weight: 700;
+      color: #YOUR_FG_HEX;
+      position: relative; z-index: 1;
+    }
+  </style>
+
+  <!-- Root sub-comp div. data-duration MUST equal estimatedDuration_s from
+       your dispatch packet within 0.01s. The assembler hard-fails on drift. -->
+  <div
+    id="beat-N-SLUG"
+    class="bN-root"
+    data-composition-id="beat-N-SLUG"
+    data-width="1920"
+    data-height="1080"
+    data-duration="5.5"
+  >
+    <!-- Full-bleed background div (NOT the root). Paints at render time. -->
+    <div class="bN-bg"></div>
+
+    <!-- Visible elements carry inline style="opacity:1" so the frame-0 black
+         trap doesn't bite (landmine: GSAP `from()` + CSS opacity:0 animates
+         0→0 forever; any opacity tween starting at t=0 renders black under
+         seek). Animate transforms only, never opacity at t=0. -->
+    <h1 class="bN-title" style="opacity:1" data-layout-role="primary">YOUR HEADLINE</h1>
+  </div>
+
+  <script>
+    (function () {
+      var BEAT = 5.5; // MUST equal data-duration above to the centisecond.
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      // Entrance — transform-only. Use `x`/`y`/`scale`/`scaleX`/`scaleY`/
+      // `rotation`/`opacity` ONLY. Never tween `width`/`height`/`top`/`left`
+      // (the renderer's seek path cannot sub-pixel-position those).
+      tl.fromTo(".bN-title", { scale: 0.92, y: 40 }, { scale: 1, y: 0, duration: 0.6, ease: "power4.out" }, 0);
+
+      // Hold motion — continuous-motion rule (Airbnb-style constant motion).
+      // A scale-creep on the root keeps the frame alive across the beat.
+      tl.fromTo(".bN-root", { scale: 1.0 }, { scale: 1.06, duration: BEAT, ease: "none" }, 0);
+
+      // Register synchronously — key MUST match data-composition-id above.
+      // Async registration races the renderer's 45s timeout and the beat
+      // ships black.
+      window.__timelines["beat-N-SLUG"] = tl;
+    })();
+  </script>
+</template>
+<!--
+  DO NOT include <script src="…gsap…"> or <script src="hyper-shader-local.js">
+  inside this template. The assembler emits both at root; duplicating them
+  double-loads GSAP and double-inits HyperShader.
+
+  DO NOT include `<link rel="stylesheet" href="...font...">` — bundle fonts
+  via @font-face with local files in assets/fonts/ instead. Network font
+  requests fail under headless render (no DNS, may stall the frame loop).
+-->

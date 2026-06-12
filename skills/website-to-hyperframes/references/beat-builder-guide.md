@@ -65,6 +65,8 @@ Four hidden pitfalls account for most rework in a single beat run — scan them 
 
 Save to the path the main agent specified (usually `compositions/beat-N-<slug>.html`). Copy-paste this starter and fill in the named placeholders. Every attribute, ID, and timeline key shown is load-bearing — the assembler (final action of Step 5) hard-fails if `data-duration` drifts from your dispatch packet's `estimatedDuration_s` by more than 0.01s.
 
+There's also a file copy of this same starter at `skills/website-to-hyperframes/templates/_beat-skeleton.html` — `cp` it instead of paste-from-docs when starting a new beat to skip the copy/paste step and keep the landmine-defusing inline comments alongside your edits.
+
 ```html
 <template id="beat-N-<slug>-template">
   <style>
@@ -132,6 +134,14 @@ Fix ALL errors. Zero errors required.
 ```bash
 npx tsx packages/cli/src/cli.ts snapshot . --frames 3
 ```
+
+This snapshots the FULL timeline. When you want frames from only YOUR beat's window (faster iteration, no scanning past sibling beats), once `index.html` exists run:
+
+```bash
+node skills/website-to-hyperframes/scripts/preview-beat.mjs --hyperframes . --beat compositions/beat-N-<slug>.html --frames 5
+```
+
+The script walks `compositions/` in the same sort order the assembler uses, computes your beat's cumulative start_s, and invokes `snapshot --at <t1>,<t2>,...` with frames evenly spaced inside `[start_s, start_s+duration_s)`. Same `snapshots/contact-sheet.jpg`, beat-local frames only. Re-run `scripts/assemble-index.mjs` first if you've changed durations since the last assemble.
 
 **VIEW the contact sheet cell-by-cell** (`snapshots/contact-sheet.jpg`). Not a glance — look at EVERY frame your snapshot produced, in order. For each frame, write one short sentence naming what you see (subject, position, motion state, visible text). If you find yourself summarizing the contact sheet as a whole, stop and go back to frame-by-frame.
 
