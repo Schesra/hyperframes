@@ -416,6 +416,11 @@ type GsapMutationRequest =
       splitTime: number;
       elementStart: number;
       elementDuration: number;
+    }
+  | {
+      type: "shift-positions";
+      targetSelector: string;
+      delta: number;
     };
 
 // ── GSAP mutation executor ──────────────────────────────────────────────────
@@ -646,6 +651,24 @@ async function executeGsapMutation(
         elementStart: body.elementStart,
         elementDuration: body.elementDuration,
       });
+    }
+    case "shift-positions": {
+      if (typeof body.targetSelector !== "string" || !body.targetSelector) {
+        return respond({ error: "shift-positions requires a non-empty targetSelector" }, 400);
+      }
+      if (typeof body.delta !== "number" || !Number.isFinite(body.delta) || body.delta === 0) {
+        return respond({ error: "shift-positions requires a finite non-zero delta" }, 400);
+      }
+      const parsed = parseGsapScript(block.scriptText);
+      const matching = parsed.animations.filter((a) => a.targetSelector === body.targetSelector);
+      if (matching.length === 0) return block.scriptText;
+      let script = block.scriptText;
+      for (const anim of matching) {
+        const oldPos = typeof anim.position === "number" ? anim.position : 0;
+        const newPos = Math.max(0, Math.round((oldPos + body.delta) * 1000) / 1000);
+        script = updateAnimationInScript(script, anim.id, { position: newPos });
+      }
+      return script;
     }
     default:
       return respond({ error: `unknown mutation type: ${(body as { type: string }).type}` }, 400);

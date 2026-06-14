@@ -53,6 +53,43 @@ interface UseTimelineEditingOptions {
   isRecordingRef?: React.RefObject<boolean>;
 }
 
+// fallow-ignore-next-line complexity
+async function shiftGsapPositions(
+  projectId: string,
+  sourceFile: string,
+  targetSelector: string,
+  delta: number,
+  recordEdit: (input: RecordEditInput) => Promise<void>,
+  domEditSaveTimestampRef: React.MutableRefObject<number>,
+): Promise<void> {
+  try {
+    const res = await fetch(
+      `/api/projects/${encodeURIComponent(projectId)}/gsap-mutations/${encodeURIComponent(sourceFile)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "shift-positions", targetSelector, delta }),
+      },
+    );
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      ok?: boolean;
+      before?: string;
+      after?: string;
+    };
+    if (!data.ok || data.before == null || data.after == null) return;
+    if (data.before === data.after) return;
+    domEditSaveTimestampRef.current = Date.now();
+    await recordEdit({
+      label: "Shift GSAP positions with clip",
+      kind: "manual",
+      files: { [sourceFile]: { before: data.before, after: data.after } },
+    });
+  } catch {
+    // GSAP shift is best-effort — the clip move already succeeded
+  }
+}
+
 // ── Hook ──
 
 export function useTimelineEditing({
@@ -116,13 +153,15 @@ export function useTimelineEditing({
     ],
   );
 
+  // fallow-ignore-next-line complexity
   const handleTimelineElementMove = useCallback(
     (element: TimelineElement, updates: Pick<TimelineElement, "start" | "track">) => {
       patchIframeDomTiming(previewIframeRef.current, element, [
         ["data-start", formatTimelineAttributeNumber(updates.start)],
         ["data-track-index", String(updates.track)],
       ]);
-      return enqueueEdit(element, "Move timeline clip", (original, target) => {
+      const delta = updates.start - element.start;
+      const editPromise = enqueueEdit(element, "Move timeline clip", (original, target) => {
         let patched = applyPatchByTarget(original, target, {
           type: "attribute",
           property: "start",
@@ -134,8 +173,33 @@ export function useTimelineEditing({
           value: String(updates.track),
         });
       });
+      const domId = element.domId;
+      if (delta !== 0 && domId) {
+        const pid = projectIdRef.current;
+        const sourceFile = element.sourceFile || activeCompPath || "index.html";
+        if (pid) {
+          editPromise.then(() =>
+            shiftGsapPositions(
+              pid,
+              sourceFile,
+              `#${domId}`,
+              delta,
+              recordEdit,
+              domEditSaveTimestampRef,
+            ),
+          );
+        }
+      }
+      return editPromise;
     },
-    [previewIframeRef, enqueueEdit],
+    [
+      previewIframeRef,
+      enqueueEdit,
+      projectIdRef,
+      activeCompPath,
+      recordEdit,
+      domEditSaveTimestampRef,
+    ],
   );
 
   const handleTimelineElementResize = useCallback(

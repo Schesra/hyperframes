@@ -394,4 +394,80 @@ const tl = gsap.timeline();
     // The variable target was not flattened to a string-literal selector
     expect(result.after).toContain("tl.to(kicker,");
   });
+
+  function setupShiftTest(html: string) {
+    const projectDir = createProjectDir();
+    writeHtml(projectDir, "index.html", html);
+    const app = new Hono();
+    registerFileRoutes(app, createAdapter(projectDir));
+    return async (mutation: Record<string, unknown>) => {
+      const res = await app.request("http://localhost/projects/demo/gsap-mutations/index.html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mutation),
+      });
+      return {
+        status: res.status,
+        ...((await res.json()) as {
+          ok: boolean;
+          parsed: { animations: Array<{ targetSelector: string; position?: number }> };
+        }),
+      };
+    };
+  }
+
+  it("shift-positions shifts all animations targeting a selector by the given delta", async () => {
+    const mutate = setupShiftTest(`<!DOCTYPE html><html><body>
+<div id="hero" data-start="0" data-duration="4"></div>
+<script data-hyperframes-gsap>
+const tl = gsap.timeline();
+tl.to("#hero", { x: 100, duration: 2 }, 0);
+tl.to("#hero", { opacity: 1, duration: 1 }, 1);
+tl.to("#other", { y: 50, duration: 1 }, 0);
+</script></body></html>`);
+
+    const result = await mutate({ type: "shift-positions", targetSelector: "#hero", delta: 2 });
+    expect(result.status).toBe(200);
+    expect(result.ok).toBe(true);
+    const heroAnims = result.parsed.animations.filter((a) => a.targetSelector === "#hero");
+    expect(heroAnims).toHaveLength(2);
+    expect(heroAnims[0].position).toBe(2);
+    expect(heroAnims[1].position).toBe(3);
+    const otherAnims = result.parsed.animations.filter((a) => a.targetSelector === "#other");
+    expect(otherAnims).toHaveLength(1);
+    expect(otherAnims[0].position).toBe(0);
+  });
+
+  it("shift-positions clamps negative positions to 0", async () => {
+    const mutate = setupShiftTest(`<!DOCTYPE html><html><body>
+<div id="box" data-start="2" data-duration="4"></div>
+<script data-hyperframes-gsap>
+const tl = gsap.timeline();
+tl.to("#box", { x: 100, duration: 2 }, 1);
+</script></body></html>`);
+
+    const result = await mutate({ type: "shift-positions", targetSelector: "#box", delta: -3 });
+    expect(result.status).toBe(200);
+    expect(result.ok).toBe(true);
+    expect(result.parsed.animations[0].position).toBe(0);
+  });
+
+  it("shift-positions returns unchanged script when no animations match", async () => {
+    const mutate = setupShiftTest(`<!DOCTYPE html><html><body>
+<div id="hero" data-start="0" data-duration="4"></div>
+<script data-hyperframes-gsap>
+const tl = gsap.timeline();
+tl.to("#hero", { x: 100, duration: 2 }, 0);
+</script></body></html>`);
+
+    const result = await mutate({
+      type: "shift-positions",
+      targetSelector: "#nonexistent",
+      delta: 1,
+    });
+    expect(result.status).toBe(200);
+    expect(result.ok).toBe(true);
+    expect(result.parsed.animations[0].targetSelector).toBe("#hero");
+    expect(result.parsed.animations[0].position).toBe(0);
+  });
 });
