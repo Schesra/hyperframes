@@ -380,41 +380,6 @@ async function initDrawElementOrTransparentBackground(
   page: Page,
   logInitPhase: (phase: string) => void,
 ): Promise<void> {
-  // Task B: macOS static-frame dedup (opt-in HF_STATIC_DEDUP=true, default off). The
-  // page is ready here. Compute the frames identical to their predecessor — no GSAP
-  // tween active in either AND not a clip-cut boundary — then reuse the prior buffer
-  // for them in captureFrameCore instead of seeking + capturing. Whole-comp
-  // disqualified on any media (video/canvas/webgl) or init-detectable non-GSAP
-  // animation (CSS/WAAPI). Under-detection = a frozen frame, so the gate is
-  // conservative and this stays opt-in. See docs/fast-capture-limitations.md Task B.
-  if (process.env.HF_STATIC_DEDUP === "true") {
-    const fps = fpsToNumber(session.options.fps);
-    const stats = await computeStaticFrameSet(page, fps);
-    if (stats.eligible && stats.staticFrameSet.size > 0) {
-      // Backstop: empirically verify a sample before trusting the prediction. Catches
-      // hidden (non-GSAP, non-clip) animation the static predictor can't see. Skip
-      // with HF_STATIC_DEDUP_VERIFY=false (faster, prediction-only — unsafe).
-      const samples = Number(process.env.HF_STATIC_DEDUP_SAMPLES ?? "24");
-      const badFrame =
-        process.env.HF_STATIC_DEDUP_VERIFY === "false"
-          ? null
-          : await verifyStaticFramesSafe(session, page, stats.staticFrameSet, fps, samples);
-      if (badFrame !== null) {
-        logInitPhase(
-          `static-frame dedup: disabled (verification failed — content changed across ` +
-            `predicted-static frame ${badFrame}; hidden non-GSAP/non-clip animation)`,
-        );
-      } else {
-        session.staticFrames = stats.staticFrameSet;
-        logInitPhase(
-          `static-frame dedup: ${stats.staticFrameSet.size}/${stats.totalFrames} frame(s) reusable ` +
-            `(${Math.round((stats.staticFrameSet.size / stats.totalFrames) * 100)}%, verified)`,
-        );
-      }
-    } else {
-      logInitPhase(`static-frame dedup: disabled (${stats.reason})`);
-    }
-  }
   const supersampling = (session.options.deviceScaleFactor ?? 1) > 1;
   // forceScreenshot is an explicit routing decision made upstream (render-mode
   // compat hints like raw requestAnimationFrame, alpha formats, low-memory) —
@@ -568,6 +533,10 @@ async function initDrawElementOrTransparentBackground(
             `${threeD.selfQuads ?? 0} self-quad el(s), ${threeD.stubTargets ?? 0} stub target(s)`,
         );
       }
+      // Task B: arm static-frame dedup here — drawElement is confirmed (all gates
+      // passed) and the DOM is still normal (canvas not yet injected, so the
+      // verification screenshots are valid). drawElement-path only; see armStaticDedup.
+      await armStaticDedup(session, page, logInitPhase);
       await injectDrawElementCanvas(page, session.options.width, session.options.height);
       if (transparent) {
         await initTransparentBackground(session.page);
@@ -1892,19 +1861,64 @@ async function computeStaticFrameSet(
 }
 
 /**
+ * Task B: arm macOS static-frame dedup (opt-in HF_STATIC_DEDUP=true, default off).
+ * Called ONLY once drawElement is confirmed for the comp (all whole-comp gates passed)
+ * and the DOM is still in normal render state (before the drawElement canvas is
+ * injected) so the verification screenshots are valid. Restricting to the drawElement
+ * path is deliberate: gated/screenshot comps are gated precisely because they carry
+ * compositor animation (stacked fades, 3D, flashes) that the static predictor
+ * mispredicts and a sparse backstop can't reliably catch — dedup there froze frames.
+ * drawElement-path comps animate via GSAP transforms the predictor handles cleanly.
+ */
+async function armStaticDedup(
+  session: CaptureSession,
+  page: Page,
+  logInitPhase: (phase: string) => void,
+): Promise<void> {
+  if (process.env.HF_STATIC_DEDUP !== "true") return;
+  const fps = fpsToNumber(session.options.fps);
+  const stats = await computeStaticFrameSet(page, fps);
+  if (!stats.eligible || stats.staticFrameSet.size === 0) {
+    logInitPhase(`static-frame dedup: disabled (${stats.reason})`);
+    return;
+  }
+  // Backstop: empirically verify a sample against the anchor each run reuses. Catches
+  // hidden (non-GSAP/non-clip) animation and slow drift the predictor can't see. Skip
+  // with HF_STATIC_DEDUP_VERIFY=false (faster, prediction-only — unsafe).
+  const samples = Number(process.env.HF_STATIC_DEDUP_SAMPLES ?? "24");
+  const badFrame =
+    process.env.HF_STATIC_DEDUP_VERIFY === "false"
+      ? null
+      : await verifyStaticFramesSafe(session, page, stats.staticFrameSet, fps, samples);
+  if (badFrame !== null) {
+    logInitPhase(
+      `static-frame dedup: disabled (verification failed — content drifts from anchor at ` +
+        `predicted-static frame ${badFrame})`,
+    );
+    return;
+  }
+  session.staticFrames = stats.staticFrameSet;
+  logInitPhase(
+    `static-frame dedup: ${stats.staticFrameSet.size}/${stats.totalFrames} frame(s) reusable ` +
+      `(${Math.round((stats.staticFrameSet.size / stats.totalFrames) * 100)}%, verified)`,
+  );
+}
+
+/**
  * Task B safety backstop: empirically verify the predicted-static set before trusting
  * it. `computeStaticFrameSet` predicts static frames from GSAP timelines + clip cuts,
- * but animation outside `window.__timelines` (CSS transition on class change, raw-rAF
- * style mutation, a canvas that draws only at playback) is invisible to it and would
- * freeze. So sample predicted-static frames, capture each and its predecessor, and
- * byte-compare (the screenshot path is bit-deterministic, so a truly static frame is
- * byte-identical to its predecessor). Any mismatch ⇒ hidden animation ⇒ this comp is
- * unsafe to dedup; the caller disables it whole-comp. Runs at init in normal DOM state
- * (before the drawElement canvas is injected), so it is capture-mode independent.
+ * but animation it can't see (free CSS/WAAPI/rAF, or a slow drift whose per-frame delta
+ * is below JPEG quantization) would freeze.
  *
- * Sparse sampling: hidden animation in these comps is systemic (e.g. every scene
- * transition), so a spread of ~`sampleCount` probes reliably trips on at least one.
- * Returns the first mismatching frame, or null if all sampled pairs are identical.
+ * CRITICAL — verify against the ANCHOR, not the predecessor. Dedup chains a whole
+ * static run back to ONE buffer: the last captured (non-static) frame before the run.
+ * Every frame in the run reuses that anchor. So a slow animation with sub-quantization
+ * per-frame deltas is byte-identical frame-to-frame (an f-vs-(f-1) check passes) yet
+ * drifts far from the anchor by the run's end (the actual frozen error). We therefore
+ * capture each run's anchor once and compare the run's END and interior samples to it;
+ * any mismatch ⇒ the run isn't truly static ⇒ disable dedup whole-comp. Runs at init in
+ * normal DOM state (pre-canvas-injection), so it is capture-mode independent. Returns
+ * the first mismatching frame, or null if every sampled run holds against its anchor.
  */
 async function verifyStaticFramesSafe(
   session: CaptureSession,
@@ -1915,26 +1929,17 @@ async function verifyStaticFramesSafe(
 ): Promise<number | null> {
   const frames = [...staticFrames].sort((a, b) => a - b);
   if (frames.length === 0) return null;
-  // Sample = run-starts (first static frame of each run, where the predecessor is NOT
-  // static — i.e. right after an animated/boundary region, where a trailing CSS/settle
-  // animation the GSAP walker can't see would hide) PLUS an even spread (for systemic
-  // hidden animation). Run-start targeting is the cheap high-value probe; even spread
-  // is the backstop's backstop. Sampling can't catch an arbitrary mid-run content
-  // change that has no deterministic signal — that is the documented residual.
-  const sampleSet = new Set<number>();
+  // Group consecutive static frames into runs; each run [a..b] reuses anchor a-1.
+  const runs: Array<{ a: number; b: number }> = [];
   for (const f of frames) {
-    if (!staticFrames.has(f - 1)) {
-      sampleSet.add(f); // run-start
-      if (staticFrames.has(f + 1)) sampleSet.add(f + 1); // and the next, to catch a 2-frame settle
-    }
+    const last = runs[runs.length - 1];
+    if (last && f === last.b + 1) last.b = f;
+    else runs.push({ a: f, b: f });
   }
-  const k = Math.min(frames.length, sampleCount);
-  const step = frames.length / k;
-  for (let i = 0; i < k; i++) {
-    const f = frames[Math.floor(i * step)];
-    if (f !== undefined) sampleSet.add(f);
-  }
-  const samples = [...sampleSet].sort((a, b) => a - b);
+  // Test the longest runs first (most accumulated-drift risk); within budget test
+  // each run's END (max drift) + a midpoint, compared to the run's anchor.
+  runs.sort((x, y) => y.b - y.a - (x.b - x.a));
+  const budget = Math.max(sampleCount, runs.length * 2);
   const seekCapture = async (frameIdx: number): Promise<Buffer> => {
     const t = quantizeTimeToFrame(frameIdx / fps, fps);
     await page.evaluate((tt: number) => {
@@ -1943,11 +1948,19 @@ async function verifyStaticFramesSafe(
     }, t);
     return pageScreenshotCapture(page, session.options);
   };
-  for (const f of samples) {
-    if (f < 1) continue;
-    const prev = await seekCapture(f - 1);
-    const cur = await seekCapture(f);
-    if (!prev.equals(cur)) return f; // content changed across a "static" frame → unsafe
+  let spent = 0;
+  for (const { a, b } of runs) {
+    if (spent >= budget) break;
+    const anchor = a - 1;
+    if (anchor < 0) continue;
+    const anchorBuf = await seekCapture(anchor);
+    spent++;
+    const mid = a + Math.floor((b - a) / 2);
+    for (const f of mid === b ? [b] : [b, mid]) {
+      const cur = await seekCapture(f);
+      spent++;
+      if (!anchorBuf.equals(cur)) return f; // drifts from the anchor it would reuse → unsafe
+    }
   }
   return null;
 }
