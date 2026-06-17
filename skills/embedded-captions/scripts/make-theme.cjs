@@ -13092,36 +13092,90 @@ const P = HEROLESS ? { grain: (dna.plate || {}).grain || 5 } : dna.plate || {};
 // punchOffset: themes whose impact is NOT the hero onset (e.g. flapboard's
 // lock-complete clack) shift the plate punch anchor; default keeps onset+2f
 const anchorT = (heroIn + (P.punchOffset ?? 0.045)).toFixed(3);
-let filter;
-// zoompan resamples EVERY frame (even z=1) -> run it 2x supersampled and
-// lanczos back down so the always-on resample costs no sharpness (shake amps
-// are in pixels -> doubled at 2x)
+// zoompan resamples EVERY frame it sees (a scale-up→resample→scale-down
+// roundtrip — a mild low-pass even at z=1). A `punch` only moves the camera in
+// a ~0.5s window, so sending the whole clip through zoompan softened the static
+// 95% for nothing. Fix: WINDOWED punch — split the clip, run zoompan ONLY on the
+// active window (its softening is hidden by the motion), and pass the rest
+// through untouched (grain only, no geometric resample → stays as sharp as
+// final.mp4). pushIn (continuous whole-clip zoom) and grain-only are unchanged.
 const SS = 2;
-if (P.punch) {
-  const minor = P.minorPunch && LINES.find((L) => L.words.some((w) => w.minor));
-  const minorT = minor ? (minor.words.find((w) => w.minor).start + 0.01).toFixed(3) : null;
-  filter = `scale=${W * SS}:${H * SS}:flags=lanczos,zoompan=
-    z='1+${P.punch}*exp(-${P.punchDecay || 9}*(time-${anchorT}))*between(time,${anchorT},${anchorT}+${P.shakeWindow || 0.6})${minorT ? `+${P.minorPunch}*exp(-10*(time-${minorT}))*between(time,${minorT},${minorT}+0.4)` : ""}':
-    x='iw/2-(iw/zoom/2)${P.shakeAmpX ? `+${P.shakeAmpX * SS}*exp(-${P.shakeDecay || 7}*(time-${anchorT}))*sin(2*PI*${P.shakeHz || 12}*(time-${anchorT}))*between(time,${anchorT},${anchorT}+${P.shakeWindow || 0.6})` : ""}':
-    y='ih/2-(ih/zoom/2)${P.shakeAmpY ? `+${P.shakeAmpY * SS}*exp(-${P.shakeDecay || 7}*(time-${anchorT}))*cos(2*PI*${((P.shakeHz || 12) * 1.31).toFixed(2)}*(time-${anchorT}))*between(time,${anchorT},${anchorT}+${P.shakeWindow || 0.6})` : ""}':
-    d=1:s=${W * SS}x${H * SS}:fps=${FPS},scale=${W}:${H}:flags=lanczos`;
-} else if (P.pushIn) {
-  filter = `scale=${W * SS}:${H * SS}:flags=lanczos,zoompan=z='1+${P.pushIn}*time/${DUR.toFixed(2)}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${W * SS}x${H * SS}:fps=${FPS},scale=${W}:${H}:flags=lanczos`;
-} else {
-  filter = `null`;
-}
 const rgba = P.rgbashift
   ? `,rgbashift=rh=-${P.rgbashift}:bh=${P.rgbashift}:enable='between(t,${anchorT},${(heroIn + 0.125).toFixed(3)})+between(t,${(LASTWORD.start + 0.04).toFixed(3)},${(LASTWORD.start + 0.17).toFixed(3)})',format=yuv420p`
   : "";
+const tail = `${rgba},\n  noise=alls=${P.grain || 5}:allf=t+u[v]`;
+
+// build the punch active window (union of the apex punch + any minor punch)
+let GRAPH;
+if (P.punch) {
+  const win = P.shakeWindow || 0.6;
+  const aT = heroIn + (P.punchOffset ?? 0.045);
+  const minor = P.minorPunch && LINES.find((L) => L.words.some((w) => w.minor));
+  const minorT = minor ? minor.words.find((w) => w.minor).start + 0.01 : null;
+  let wStart = aT,
+    wEnd = aT + win;
+  if (minorT != null) {
+    wStart = Math.min(wStart, minorT);
+    wEnd = Math.max(wEnd, minorT + 0.4);
+  }
+  wStart = Math.max(0.04, wStart - 0.05); // pad the easing tails
+  wEnd = Math.min(DUR - 0.04, wEnd + 0.15);
+  // absolute time inside the PTS-reset middle segment = local time + wStart
+  const TA = `(time+${wStart.toFixed(3)})`;
+  const aTs = aT.toFixed(3);
+  const zp =
+    `zoompan=` +
+    `z='1+${P.punch}*exp(-${P.punchDecay || 9}*(${TA}-${aTs}))*between(${TA},${aTs},${aTs}+${win})${minorT != null ? `+${P.minorPunch}*exp(-10*(${TA}-${minorT.toFixed(3)}))*between(${TA},${minorT.toFixed(3)},${minorT.toFixed(3)}+0.4)` : ""}':` +
+    `x='iw/2-(iw/zoom/2)${P.shakeAmpX ? `+${P.shakeAmpX * SS}*exp(-${P.shakeDecay || 7}*(${TA}-${aTs}))*sin(2*PI*${P.shakeHz || 12}*(${TA}-${aTs}))*between(${TA},${aTs},${aTs}+${win})` : ""}':` +
+    `y='ih/2-(ih/zoom/2)${P.shakeAmpY ? `+${P.shakeAmpY * SS}*exp(-${P.shakeDecay || 7}*(${TA}-${aTs}))*cos(2*PI*${((P.shakeHz || 12) * 1.31).toFixed(2)}*(${TA}-${aTs}))*between(${TA},${aTs},${aTs}+${win})` : ""}':` +
+    `d=1:s=${W * SS}x${H * SS}:fps=${FPS}`;
+  const hasHead = wStart > 0.06; // a passthrough segment before the window
+  const hasTail = wEnd < DUR - 0.06; // a passthrough segment after the window
+  if (wEnd > wStart + 0.1 && (hasHead || hasTail)) {
+    // 2–3 segments: only the [wStart,wEnd] window is resampled (zoompan); the
+    // head/tail (whichever exist) pass through with no geometric resample.
+    const segs = [];
+    const labels = [];
+    let n = 0;
+    if (hasHead) {
+      segs.push(`  [s${n}]trim=0:${wStart.toFixed(3)},setpts=PTS-STARTPTS,setsar=1[a]`);
+      labels.push("[a]");
+      n++;
+    }
+    segs.push(
+      `  [s${n}]trim=${wStart.toFixed(3)}:${wEnd.toFixed(3)},setpts=PTS-STARTPTS,scale=${W * SS}:${H * SS}:flags=lanczos,${zp},scale=${W}:${H}:flags=lanczos,setsar=1[b]`,
+    );
+    labels.push("[b]");
+    n++;
+    if (hasTail) {
+      segs.push(`  [s${n}]trim=${wEnd.toFixed(3)},setpts=PTS-STARTPTS,setsar=1[c]`);
+      labels.push("[c]");
+      n++;
+    }
+    GRAPH =
+      `[0:v]split=${n}${Array.from({ length: n }, (_, i) => `[s${i}]`).join("")};\n` +
+      segs.join(";\n") +
+      `;\n  ${labels.join("")}concat=n=${n}:v=1:a=0${tail}`;
+  } else {
+    // window spans nearly the whole clip → whole-clip supersampled path (local
+    // time becomes absolute time again, so swap the offset back out)
+    GRAPH = `[0:v]scale=${W * SS}:${H * SS}:flags=lanczos,${zp.replace(new RegExp(TA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "time")},scale=${W}:${H}:flags=lanczos${tail}`;
+  }
+} else if (P.pushIn) {
+  GRAPH = `[0:v]scale=${W * SS}:${H * SS}:flags=lanczos,zoompan=z='1+${P.pushIn}*time/${DUR.toFixed(2)}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${W * SS}x${H * SS}:fps=${FPS},scale=${W}:${H}:flags=lanczos${tail}`;
+} else {
+  GRAPH = `[0:v]null${tail}`;
+}
 fs.writeFileSync(
   path.join(PROJECT, "_postfx.sh"),
   `#!/usr/bin/env bash
 # generated by make-theme.cjs — plate reaction for theme "${dna.name}"
+# Windowed punch: only the camera-move window is resampled; the rest of the clip
+# is passed through (grain only) so it stays as sharp as final.mp4.
 set -euo pipefail
 cd "$(dirname "$0")"
 ffmpeg -y -v error -i final.mp4 -filter_complex "
-  [0:v]${filter}${rgba},
-  noise=alls=${P.grain || 5}:allf=t+u[v]" \\
+  ${GRAPH}" \\
   -map "[v]" -map 0:a -c:v libx264 -crf 14 -preset slow -profile:v high -c:a copy \\
   final_fx.mp4
 echo "[postfx] ${dna.name} → final_fx.mp4"
