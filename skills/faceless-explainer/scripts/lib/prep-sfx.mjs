@@ -1,91 +1,87 @@
-// prep.mjs concern module — resolve the SFX library and scene cues into globally
-// timed sfx records. Split out of prep.mjs (Step 6.5). Copies the opt-in library
-// into the project, validates each cue against manifest.json, and offsets each
-// cue's scene-local t by its scene start_s. Appends to the shared anomalies array
-// and returns the sorted sfx[] for group_spec.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import { die } from "./prep-log.mjs";
+// prep.mjs concern module — resolve the scene SFX cues into globally timed sfx records.
+//
+// SFX SOURCE is media-use (heygen audio catalog PREFERRED → the static SFX library as fallback):
+// this hands the cues to media-use `scripts/audio/sfx.mjs`, which freezes each needed clip into
+// <PROJECT_DIR>/assets/sfx/ (a heygen-catalog clip when one fits, else the library file) and
+// registers it in the one .media/ ledger, returning each clip's REAL duration. The cue TIMING
+// (scene.start_s + t_local) stays here. Without --sfx-lib the cues are dropped (warning only).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
-// SFX library is OPT-IN: when the orchestrator passes --sfx-lib the directory is
-// copied into <PROJECT_DIR>/assets/sfx/ and section_plan **SFX:** cues are
-// validated against manifest.json. Without --sfx-lib, scene cues are silently
-// dropped (warning only). Voice/bgm live under assets/; SFX matches.
+// media-use lives at skills/media-use; this file is skills/<skill>/scripts/lib/prep-sfx.mjs.
+const mediaUseDir =
+  process.env.MEDIA_USE_DIR || join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "media-use");
+
 export function resolveSfx({ sfxLibDir, hyperframesDir, scenes, groups, anomalies }) {
   const sfx = [];
-  if (sfxLibDir) {
-    const sfxManifestPath = join(sfxLibDir, "manifest.json");
-    if (!existsSync(sfxManifestPath)) {
-      die(`--sfx-lib points to ${sfxLibDir} but manifest.json is missing`);
-    }
-    let sfxManifest;
-    try {
-      sfxManifest = JSON.parse(readFileSync(sfxManifestPath, "utf8"));
-    } catch (e) {
-      die(`sfx manifest.json parse: ${e.message}`);
-    }
-    // Build filename → { duration, key } lookup so cues can reference by filename
-    // (matching v1 storyboard syntax: `impact-bass-1.mp3` not the manifest key).
-    const sfxByFile = new Map();
-    for (const [key, entry] of Object.entries(sfxManifest)) {
-      if (entry?.file && isFinite(entry.duration)) {
-        sfxByFile.set(entry.file, { key, duration: entry.duration });
-      }
-    }
 
-    // Copy entire SFX directory into <PROJECT_DIR>/assets/sfx/ (mp3 + manifest +
-    // CREDITS). Idempotent: skip files that already exist (e.g. re-runs).
-    const sfxDestDir = join(hyperframesDir, "assets", "sfx");
-    mkdirSync(sfxDestDir, { recursive: true });
-    let sfxCopied = 0;
-    for (const ent of readdirSync(sfxLibDir, { withFileTypes: true })) {
-      if (!ent.isFile()) continue;
-      const src = join(sfxLibDir, ent.name);
-      const dest = join(sfxDestDir, ent.name);
-      if (!existsSync(dest)) {
-        copyFileSync(src, dest);
-        sfxCopied++;
-      }
-    }
-
-    // Resolve each scene's cues against manifest + add scene.start_s offset.
-    for (const g of groups) {
-      for (const sid of g.scene_ids) {
-        const sceneEntry = g.scenes[sid];
-        const sceneCues = scenes.find((x) => x.sceneId === sid)?.sfxCues || [];
-        for (const cue of sceneCues) {
-          const hit = sfxByFile.get(cue.file);
-          if (!hit) {
-            anomalies.push(
-              `${sid}: SFX cue file "${cue.file}" not in manifest — dropping (known files: ${[...sfxByFile.keys()].slice(0, 5).join(", ")}${sfxByFile.size > 5 ? ", …" : ""})`,
-            );
-            continue;
-          }
-          const tGlobal = Number((sceneEntry.start_s + cue.t_local).toFixed(3));
-          sfx.push({
-            file: cue.file,
-            t: tGlobal,
-            duration: hit.duration,
-            volume: cue.volume != null ? cue.volume : 0.35,
-            scene_id: sid,
-            t_local: cue.t_local,
-            note: cue.note || "",
-          });
-        }
-      }
-    }
-    // Sort by global t for predictable index.html emission order.
-    sfx.sort((a, b) => a.t - b.t);
-    console.log(`  sfx lib copied: ${sfxCopied} file(s) → assets/sfx/`);
-  } else {
-    // Surface plan cues that won't make it to the timeline because no lib was provided.
-    let droppedCueCount = 0;
-    for (const s of scenes) droppedCueCount += s.sfxCues?.length || 0;
-    if (droppedCueCount > 0) {
-      anomalies.push(
-        `section_plan declares ${droppedCueCount} SFX cue(s) but --sfx-lib not passed — all cues dropped`,
-      );
+  // Gather every scene's cues in render order, carrying the scene start for global timing.
+  const cues = [];
+  for (const g of groups) {
+    for (const sid of g.scene_ids) {
+      const sceneEntry = g.scenes[sid];
+      const sceneCues = scenes.find((x) => x.sceneId === sid)?.sfxCues || [];
+      for (const cue of sceneCues) cues.push({ ...cue, sceneId: sid, start_s: sceneEntry.start_s });
     }
   }
+  if (cues.length === 0) return sfx;
+
+  if (!sfxLibDir) {
+    anomalies.push(`section_plan declares ${cues.length} SFX cue(s) but --sfx-lib not passed — all cues dropped`);
+    return sfx;
+  }
+
+  // Source via media-use (heygen-preferred). It freezes the used clips into assets/sfx/ + registers
+  // them, and returns { resolved: [{ file, duration, provider }] } — the real (catalog or library) durations.
+  const durByFile = new Map();
+  const sfxCli = join(mediaUseDir, "scripts", "audio", "sfx.mjs");
+  if (existsSync(sfxCli)) {
+    const cuesPath = join(hyperframesDir, ".media", "sfx-cues.json");
+    mkdirSync(dirname(cuesPath), { recursive: true });
+    writeFileSync(cuesPath, JSON.stringify({ sfx: cues.map((c) => ({ file: c.file, note: c.note })) }));
+    const r = spawnSync(
+      "node",
+      [sfxCli, "--project", hyperframesDir, "--cues", cuesPath, "--sfx-lib", sfxLibDir, "--register"],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    );
+    try {
+      const o = JSON.parse((r.stdout || "").trim());
+      for (const res of o.resolved || []) if (res.file) durByFile.set(res.file, res.duration);
+      console.log(`  sfx via media-use (${o.source || "?"}): ${o.copied || 0} clip(s) → assets/sfx/`);
+    } catch (e) {
+      anomalies.push(`media-use sfx.mjs failed (${(r.stderr || e.message || "").toString().slice(0, 120)}) — using library durations`);
+    }
+  } else {
+    anomalies.push(`media-use not found at ${mediaUseDir} — using library durations (no heygen SFX)`);
+  }
+
+  // Library manifest = duration source for any cue media-use didn't resolve (and the no-media-use path).
+  let manifest = {};
+  const manifestPath = join(sfxLibDir, "manifest.json");
+  if (existsSync(manifestPath)) {
+    try { manifest = JSON.parse(readFileSync(manifestPath, "utf8")); } catch { /* fall through */ }
+  }
+  const libDur = new Map();
+  for (const e of Object.values(manifest)) if (e?.file && isFinite(e.duration)) libDur.set(e.file, e.duration);
+
+  for (const cue of cues) {
+    const duration = durByFile.has(cue.file) ? durByFile.get(cue.file) : libDur.get(cue.file);
+    if (duration == null) {
+      anomalies.push(`${cue.sceneId}: SFX cue file "${cue.file}" not resolved (not in catalog or library) — dropping`);
+      continue;
+    }
+    sfx.push({
+      file: cue.file,
+      t: Number((cue.start_s + cue.t_local).toFixed(3)),
+      duration,
+      volume: cue.volume != null ? cue.volume : 0.35,
+      scene_id: cue.sceneId,
+      t_local: cue.t_local,
+      note: cue.note || "",
+    });
+  }
+  sfx.sort((a, b) => a.t - b.t);
   return sfx;
 }
