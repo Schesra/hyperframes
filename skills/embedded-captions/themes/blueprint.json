@@ -1,0 +1,55 @@
+{
+  "name": "blueprint",
+  "voice": "drafting-table cyanotype — captions are a technical drawing. The lower third is a faint drafting band with a bright rule and a title block; transcript lines sit LEFT-ALIGNED on thin baseline rules that draw L→R, words WIPE in along the line with a registration tick at each word, and emphasis words get a dimension callout (bracket + tiny mono label). At the apex a cyanotype scrim + drafting grid charge behind the subject and a thin white PLOTTER pen writes the hero word stroke by stroke (square nib, construction guide, registration crosses), then a 45° hatch-fill sweeps through the glyph and a 'REV A // APPROVED' chip stamps the corner.",
+  "when": "engineering, science, data, architecture, product-spec and explainer content — anything precise and measured that wants a measured-not-loud register. The cool cyanotype scrim supplies its own contrast on bright scenes; reads as a working drawing, so it suits deliberate pacing.",
+  "register": "precise",
+  "fonts": { "body": "Space Grotesk", "tag": "VT323", "strokeFont": "HersheyScript1.svg" },
+  "palette": {
+    "body": "#f1f7ff",
+    "accent": "#9fc6ff",
+    "em": "#9fc6ff",
+    "line": "#ffffff",
+    "blueline": "#9fc6ff",
+    "ruleDim": "#9fc6ff",
+    "scrimTop": "rgba(8,24,52,0.60)",
+    "scrimMid": "rgba(10,30,60,0.42)",
+    "bandHi": "rgba(7,20,42,0.42)",
+    "bandMid": "rgba(7,20,42,0.66)",
+    "bandLo": "rgba(8,24,50,0.76)",
+    "tblockBg": "rgba(8,24,50,0.35)",
+    "tblockLo": "#7fa8d8",
+    "chipText": "#cfe6ff",
+    "chipBg": "rgba(8,24,52,0.62)",
+    "flash": "rgba(190,220,255,0.55)"
+  },
+  "body": {
+    "paradigm": "draftrail",
+    "layer": "fg",
+    "fontPx": 44,
+    "fontWeight": 500,
+    "left": 74,
+    "railW": 706,
+    "rows": [566, 624],
+    "bandTop": 560,
+    "tblockX": 952,
+    "tblock": ["NIGHT SKY SURVEY — SHT 06", "DWG OBS-042 · SCALE 1:1 · REV A"],
+    "dims": ["Ø 4.2″", "Ø 9 µm", "R 0.5", "12.4 mm"],
+    "yield": { "dim": 0.55, "pre": 0.05, "post": 0.67 }
+  },
+  "hero": {
+    "setpiece": "plotterdraw",
+    "layer": "bg",
+    "params": {
+      "targetWidth": 960,
+      "window": 0.55,
+      "coreWidth": 3,
+      "maskWidth": 17,
+      "grid": 0.85,
+      "chip": "REV A  //  APPROVED",
+      "chipSize": 24,
+      "chipDelay": 0.48
+    }
+  },
+  "plate": { "grain": 5 },
+  "linkages": []
+}

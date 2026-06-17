@@ -1,0 +1,43 @@
+{
+  "name": "cover",
+  "voice": "the live magazine-cover takeover — the transcript reads as a small editorial column docked in a clear corner (folio numbers, hairline rules, a barcode bug; words INK-SETTLE in, the emphasis word flips to an italic swash, lines exit on a page-turn). At the apex the room becomes paper: a serif masthead of the hero word SETS ACROSS THE TOP of frame behind the subject's head (classic cover occlusion), a kicker + issue date + lipstick-red accent bar deploy around it, and the cover breathes — print never freezes.",
+  "when": "editorial, fashion/culture/lifestyle, premium brand and founder profiles, thought-leadership and longform — anywhere the speaker should read like a cover story. Calm-elegant register; needs a bright top (the scrim turns sky into paper) and a clear lower corner for the column.",
+  "register": "elegant",
+  "fonts": { "body": "Cormorant Garamond", "hero": "Bodoni Moda", "tag": "Space Grotesk" },
+  "palette": {
+    "body": "#f6f2ea",
+    "ink": "#1c1a18",
+    "accent": "#e25a50",
+    "paper": "#f6f2ea",
+    "rule": "rgba(246,242,234,0.82)"
+  },
+  "body": {
+    "paradigm": "columnmag",
+    "layer": "fg",
+    "fontPx": 33,
+    "fontWeight": 700,
+    "letterSpacing": "0.02em",
+    "col": { "left": 48, "top": 508, "width": 500, "scrim": 0.62, "bgOpacity": 0.52 },
+    "barcodeNum": "06 26",
+    "yield": { "dim": 0.55, "pre": 0.2, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "masthead",
+    "layer": "bg",
+    "x": 640,
+    "y": 172,
+    "fontPx": 148,
+    "params": {
+      "kicker": "THE OBSERVATORY ISSUE",
+      "date": "JUNE 2026",
+      "paperRGB": "244,238,228",
+      "accentHold": "#c8473f",
+      "scrim": 0.7,
+      "ruleWidth": 1080,
+      "barWidth": 8,
+      "heroWeight": 700
+    }
+  },
+  "plate": { "pushIn": 0.012, "grain": 5 },
+  "linkages": []
+}

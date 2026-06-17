@@ -1,0 +1,107 @@
+{
+  "name": "finance",
+  "voice": "a live market terminal — the transcript is the feed. Words PRINT into a dark glass ticker band behind ▲▼ tick prefixes (quantized 2-frame up-tick pops, the surge motif at low amplitude); emphasis words light a green surge glow and roll a +N% price counter beside them. A seeded mini candlestick chart drifts on the right and the header (index / pct / vol) ticks through. The apex is THE BREAKOUT: a green candle spike rockets up the full frame behind the subject, level lines flash as the tip punches through, and the apex word slams at the spike top with a +447% odometer rolling beside it. Exit: the trade goes red and crashes down.",
+  "when": "data, growth, finance, results, metrics, momentum, 'up and to the right' announcements — any clip where the energy is a number going up. Loud-ish register; wants a scene that tolerates a top-weighted charge-dim (the bright sky behind the spike).",
+  "register": "loud",
+  "fonts": { "body": "Space Grotesk", "hero": "Anton", "tag": "VT323" },
+  "palette": {
+    "body": "#eafff4",
+    "hero": "#eafff3",
+    "up": "#1fd66b",
+    "accent": "#1fd66b",
+    "down": "#ff4d4d",
+    "hot": "#d9ffe9",
+    "glow": "#8dffc0",
+    "emGlow": "#8dffc0",
+    "tag": "#7be8a8",
+    "dim": "#3f8f63",
+    "flash": "#beffdc"
+  },
+  "body": {
+    "paradigm": "tickerrail",
+    "layer": "fg",
+    "fontPx": 40,
+    "bandH": 118,
+    "inset": 36,
+    "seed": 4470611,
+    "breakoutCandle": 18,
+    "counters": ["12.4", "38.2", "89.1"],
+    "header": {
+      "left": "OBS-CAP · LIVE FEED_",
+      "idx0": "4,212.88",
+      "pct0": "0.42%",
+      "vol0": "VOL 88.4K",
+      "idx": [
+        [0.35, "4,212.88"],
+        [0.8, "4,213.41"],
+        [1.25, "4,212.96"],
+        [1.7, "4,214.05"],
+        [2.15, "4,213.62"],
+        [2.6, "4,214.88"],
+        [3.05, "4,215.10"],
+        [3.5, "4,216.02"],
+        [3.9, "4,388.50"],
+        [4.1, "4,471.13"],
+        [4.35, "4,540.77"],
+        [4.8, "4,571.30"],
+        [5.25, "4,588.96"],
+        [5.65, "4,590.12"]
+      ],
+      "pct": [
+        [0.9, "▲ 0.48%"],
+        [1.8, "▲ 0.51%"],
+        [2.7, "▲ 0.47%"],
+        [3.5, "▲ 0.55%"],
+        [3.95, "▲ 2.96%"],
+        [4.2, "▲ 4.47%"],
+        [5.6, "▼ 1.12%"]
+      ],
+      "vol": [
+        [1.4, "VOL 91.2K"],
+        [2.8, "VOL 95.7K"],
+        [3.9, "VOL 312.4K"],
+        [5.0, "VOL 318.0K"]
+      ]
+    },
+    "yield": { "dim": 0.55, "pre": 0.06, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "breakout",
+    "layer": "bg",
+    "fontPx": 140,
+    "params": {
+      "slam": 0.14,
+      "hold": 1.84,
+      "levels": ["R3 · 4,580", "R2 · 4,440", "R1 · 4,300"],
+      "ctrLabel": "SIGNAL GAIN",
+      "roll": [
+        "+18%",
+        "+86%",
+        "+159%",
+        "+226%",
+        "+285%",
+        "+334%",
+        "+374%",
+        "+405%",
+        "+427%",
+        "+440%",
+        "+447%"
+      ]
+    }
+  },
+  "fx": { "breakline": 0.9 },
+  "plate": {
+    "charge": 0.52,
+    "dim": 0.34,
+    "punch": 0.04,
+    "punchDecay": 10,
+    "punchOffset": 0.14,
+    "shakeAmpX": 4,
+    "shakeAmpY": 3,
+    "shakeHz": 13,
+    "shakeDecay": 8,
+    "shakeWindow": 0.5,
+    "grain": 6
+  },
+  "linkages": []
+}

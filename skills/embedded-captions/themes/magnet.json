@@ -1,0 +1,67 @@
+{
+  "name": "magnet",
+  "voice": "refrigerator poetry — every word is a cream magnet chip that flies in, decelerates and SNAPS onto a translucent steel band with a crooked landing and a neighbor-shoving clack; the apex word assembles letter by letter as individual magnets flying from the frame edges, then straightens as one rigid unit and holds with a slow magnetic breathe. Tactile, handmade, domestic-warm.",
+  "when": "warm/playful explainers, personal stories, kitchen-table or behind-the-scenes talk, anything that wants a tactile handmade feel without going loud. Needs a clip with a clear sky/upper band so the letter-magnets can land behind the subject. Friendly register.",
+  "register": "warm",
+  "fonts": { "body": "Inter", "hero": "Anton", "tag": "Inter" },
+  "palette": {
+    "body": "#23252b",
+    "accent": "#cf4434",
+    "accentLo": "#b1372a",
+    "accentEdge": "rgba(74,18,12,0.65)",
+    "accentInk": "#fdf3ea",
+    "chip": "#fbfaf6",
+    "chipLo": "#efece3",
+    "chipEdge": "rgba(104,110,122,0.55)",
+    "heroInk": "#20232a",
+    "pinCool": "#8cc0e6",
+    "pinCoolLo": "#4d7fa8",
+    "pinWarm": "#f0a06c",
+    "pinWarmLo": "#b65a2e",
+    "scrimHi": "rgba(9,14,24,0.58)",
+    "scrimMid": "rgba(9,14,24,0.48)",
+    "scrimLo": "rgba(9,14,24,0.20)",
+    "haloHi": "rgba(5,9,16,0.50)",
+    "haloLo": "rgba(5,9,16,0.26)"
+  },
+  "body": {
+    "paradigm": "magnetrail",
+    "layer": "fg",
+    "fontPx": 36,
+    "weight": 600,
+    "rows": [574, 640],
+    "band": { "w": 760, "h": 148, "cx": 640, "top": 560 },
+    "redLastWord": true,
+    "seed": 4423,
+    "yield": { "dim": 0.55, "pre": 0.08, "post": 0.4 }
+  },
+  "hero": {
+    "setpiece": "magnetapex",
+    "layer": "bg",
+    "x": 768,
+    "y": 142,
+    "fontPx": 100,
+    "params": {
+      "seed": 230611,
+      "clackStagger": 0.026,
+      "flight": 0.23,
+      "chipWEm": 0.78,
+      "chipHEm": 1.24,
+      "slotStepEm": 0.82,
+      "hold": 1.8
+    }
+  },
+  "plate": {
+    "dim": 0.12,
+    "punch": 0.045,
+    "punchOffset": 0.235,
+    "punchDecay": 11,
+    "shakeAmpX": 3,
+    "shakeAmpY": 2,
+    "shakeHz": 11,
+    "shakeDecay": 8,
+    "shakeWindow": 0.4,
+    "grain": 5
+  },
+  "linkages": []
+}

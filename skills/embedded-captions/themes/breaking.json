@@ -1,0 +1,58 @@
+{
+  "name": "breaking",
+  "voice": "live-news takeover — the whole clip is a cable-news package. Body words ride a navy chyron and reveal by broadcast wipe (clip-path L→R + a 2px slam-kick); emphasis words flash a yellow highlight and pop; a never-stopping ticker scrolls one long head string at constant speed and DOUBLES its pace at the takeover. Furniture: red bar tab, pulsing LIVE bug, ticking timestamp. The apex is a BREAKING banner that slams down onto the chyron (scaleY 0→1, elastic dig-in) while the hero word STAMPS in Anton — crush, contact squash, elastic settle — under a 3-flash red/white strobe; a red BREAKING clock flips over the timestamp; the studio dims and a red alert wash pulses while a ghosted hero watermark drifts behind the subject. Exit: the banner collapses to a 2px line the ticker absorbs.",
+  "when": "news-adjacent explainers, hot takes, announcements, reactions, anything that should read URGENT / BREAKING. Loud register; needs a lower third that tolerates a navy chyron + red banner.",
+  "register": "loud",
+  "fonts": { "body": "Space Grotesk", "hero": "Anton", "tag": "VT323" },
+  "palette": {
+    "body": "#FFFFFF",
+    "accent": "#D2232A",
+    "hot": "#FF2E36",
+    "em": "#FFD23F",
+    "bar": "rgba(17,35,63,0.94)",
+    "tick": "#CFE0F2"
+  },
+  "body": {
+    "paradigm": "chyronrail",
+    "layer": "fg",
+    "fontPx": 42,
+    "barH": 68,
+    "letterSpacing": "0.01em",
+    "tab": { "text": "NEWS 24", "w": 172 },
+    "ticker": {
+      "h": 32,
+      "label": "LATEST",
+      "v1": 180,
+      "v2": 360,
+      "head": "ROOFTOP OBSERVATORY REPORTS CLEAREST SKIES OF THE SEASON +++ CITY TELESCOPE ARRAY ENTERS FINAL CALIBRATION PHASE +++ SENSOR TEAM CLAIMS RECORD SIGNAL RECOVERY FROM NOISE FLOOR +++ AMATEUR ASTRONOMERS FLOOD DOWNTOWN ROOFTOPS AT DUSK +++ NEW DENOISING PIPELINE TURNS HEADS AT IMAGING SUMMIT +++ STARGAZERS UNDETERRED BY LIGHT POLLUTION +++ ENGINEERS SAY PIXEL LIMITS NO LONGER THE CEILING +++ MORE AT THE TOP OF THE HOUR +++ "
+    },
+    "header": { "clockPrefix": "19:41:5" },
+    "yield": { "dim": 0.55, "pre": 0.06, "post": 0.46 }
+  },
+  "hero": {
+    "setpiece": "breakaway",
+    "layer": "fg",
+    "fontPx": 110,
+    "params": {
+      "tag": "BREAKING NEWS",
+      "bannerH": 140,
+      "breakClock": "● 19:42:00",
+      "wmSize": 190,
+      "wmOpacity": 0.17,
+      "wash": 0.08,
+      "washHit": 0.16,
+      "crush": 0.09,
+      "hold": 1.95,
+      "flashes": [0.13, 0.21, 0.29]
+    }
+  },
+  "plate": {
+    "dim": 0.11,
+    "punch": 0.04,
+    "punchDecay": 9,
+    "punchOffset": 0.09,
+    "shakeWindow": 0.5,
+    "grain": 5
+  },
+  "linkages": []
+}

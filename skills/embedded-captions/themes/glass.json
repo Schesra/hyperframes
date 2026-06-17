@@ -1,0 +1,52 @@
+{
+  "name": "glass",
+  "voice": "frosted glass — light moving across a cool surface. Body words ride their own rounded backdrop-blur CHIPS on a stable lower-third rail (2-frame opacity, soft slide-up, a one-shot light-catch sheet; emphasis words take one diagonal specular glint). The apex assembles BEHIND the subject from flying frosted SHARDS that snap into a glass slab, the word fades on, one clean glint sweeps, the slab tilts and the edge light follows, then it shatters: cracks flash and the shards drop away.",
+  "when": "premium product, design-tool, optics/camera and calm tech reveals — anything that wants a cool, glassy, restrained cinematic surface where the spectacle is refracted light, not impact. Elegant register. Needs a scene that tolerates a dusk dim + cool spill (any luma; brighter skies want the sky scrim it ships with).",
+  "register": "calm",
+  "fonts": { "body": "Sora", "hero": "Sora", "tag": "Sora" },
+  "palette": {
+    "body": "#FFFFFF",
+    "accent": "#78C8FF",
+    "em": "#F4FBFF",
+    "deep": "#05101C",
+    "spark": "#EAF8FF",
+    "rim": "rgba(255,255,255,0.28)",
+    "tint": "rgba(150,195,230,0.10)"
+  },
+  "body": {
+    "paradigm": "glassrail",
+    "layer": "fg",
+    "fontPx": 40,
+    "fontWeight": 500,
+    "bottomPx": 74,
+    "letterSpacing": "0.01em",
+    "chipRadius": 10,
+    "blur": 14,
+    "riseY": 18,
+    "dropY": 26,
+    "yield": { "dim": 0.5, "pre": 0.05, "post": 0.31 }
+  },
+  "hero": {
+    "setpiece": "glassslab",
+    "layer": "bg",
+    "x": 900,
+    "y": 390,
+    "fontPx": 90,
+    "maxHold": 1.7,
+    "params": {
+      "shards": 7,
+      "tracking": 0.012,
+      "weight": 800,
+      "padX": 155,
+      "heightRatio": 2.18,
+      "radius": 12,
+      "blur": 14,
+      "tilt": 1.5,
+      "hold": 1.45,
+      "seed": 20260612
+    }
+  },
+  "fx": { "sparkles": 2, "seed": 20260612 },
+  "plate": { "dim": 0.16, "pushIn": 0.012, "grain": 5 },
+  "linkages": []
+}

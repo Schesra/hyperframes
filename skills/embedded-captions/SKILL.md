@@ -1,13 +1,13 @@
 ---
 name: embedded-captions
-description: 'Add captions to a talking-head video. ONE catalog (CATALOG.md) of 32 visual identities behind two engines: column-flow (captions composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity — e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on "captions/subtitles", "embed/cinematic captions", "VFX captions", "炸/特效/酷炫字幕", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Pipeline: transcription → hyperframes remove-background matting → HTML render → ffmpeg overlay. Requires hyperframes and a single-subject clip.'
+description: Add captions to a talking-head video. ONE catalog (CATALOG.md) of 48 visual identities behind two engines: column-flow (every caption composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and 38 themed constitutions across mechanical/light/craft/interface/uncanny families (the quiet `anchor` verbatim default + ordnance/stomp/terminal/neonsign/scoreboard/vhs/laser/hologram/breaking/cover/blueprint/mirror/seance/… — e.g. a glyph-decode climax or a neon sign WRITTEN stroke by stroke). Route by identity, never by mode. Trigger on "captions/subtitles", "embed/cinematic captions", "VFX captions", "炸/特效/酷炫字幕", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Pipeline: transcription → hyperframes remove-background matting → HTML render → ffmpeg overlay. Requires hyperframes and a single-subject clip.
 metadata:
   tags: captions, embedded-captions, occlusion, matting, talking-head, rembg-matting, whisper, ffmpeg, cinematic
 ---
 
 # Embedded Captions
 
-**One catalog, picked up front** ([CATALOG.md](CATALOG.md) — 17 identities; the three engines behind it are backend detail). **Standard** (default) builds a clean verbatim **rail** (lower-third subtitle carrying most text) + an **embed** climax composited _into_ the scene behind the subject at the peak. **Cinematic** is pure embed — no rail, every caption composited behind the subject (hero typography, accumulation, occlusion as the effect). **Theme** is a complete themed constitution — body paradigm × hero setpiece × front fx × plate reaction, composed from registries ([themes/README.md](themes/README.md)): `ordnance` `terminal` `neonsign` `stardust` `stomp`. Most explainer / voiceover is **Standard**; **embed is the scarce, earned peak** — embedding every word is the common mistake; Theme is for VFX-grade asks ("炸", "特效", "像 AE 做的").
+**One catalog, picked up front** ([CATALOG.md](CATALOG.md) — 48 identities; the two engines behind it are backend detail). **Column-flow** (Cinematic) is pure embed — no rail, every caption composited _into_ the scene behind the subject (hero typography, accumulation, occlusion as the effect): `cream` `ink` `editorial` `keynote` `documentary` `loud` `neon` `glitch` `chrome` `velocity`. **Theme** is a complete themed constitution — body paradigm × hero setpiece × front fx × plate reaction, composed from registries ([themes/README.md](themes/README.md)); 38 of them, from the quiet verbatim `anchor` (the conservative default — a lower-third rail + a settled climax) through `ordnance` `terminal` `neonsign` `scoreboard` `laser` `breaking` `mirror` …. Most explainer / voiceover wants `anchor` or another rail-surface theme; **embed is the scarce, earned peak** — embedding every word is the common mistake; the loud themes are for VFX-grade asks ("炸", "特效", "像 AE 做的"). _(The old Standard rail engine was retired 2026-06-12; `anchor` replaced it.)_
 
 ---
 
@@ -16,7 +16,7 @@ metadata:
 The craft prose below is long; the **pipeline itself is short** — and everything
 deterministic is computed or compiled, never hand-written:
 
-1. **Decision gate** (refuse bad clips) → **pick ONE identity from [CATALOG.md](CATALOG.md)** (17 identities; engine/compiler derived by lookup — never surface a mode/category question)
+1. **Decision gate** (refuse bad clips) → **pick ONE identity from [CATALOG.md](CATALOG.md)** (48 identities; engine/compiler derived by lookup — never surface a mode/category question)
 2. `hyperframes init` (skip it if the project dir already exists with the video inside — `matte.cjs`/`transcribe.cjs` adopt any video in the dir as source.mp4) → **`bash scripts/prepare.sh <project>`** (matte ∥ transcribe ∥ audio-envelope in parallel, then safe-zones v2 with scene palette/optics/lighting — one command, nothing forgotten)
 3. **author a small JSON of creative choices** (read `safe-zones.json` first):
    Cinematic → `plan.json` → `fill-timings.cjs` → `fit-fonts.cjs` → `make-composition.cjs`;
@@ -26,8 +26,8 @@ deterministic is computed or compiled, never hand-written:
 
 Load-bearing rules people miss:
 
-- **rail (default) + embed (promotion).** `drop` (filler, not shown) / `rail` (verbatim lower-third subtitle, in front, carries most text) / `embed` (a peak word composited behind the subject). **Standard mode does both**, embedding only the peak(s). See **§ Caption model**.
-- **The video is delivered UNTOUCHED (Standard/Cinematic; **Theme mode's PLATE budget is the one sanctioned exception** — register-gated reaction beats (charge-dim, punch, shake, grain) defined per theme DNA and applied AFTER the matte composite so subject+text+plate move as one frame)** — captions are the only thing added; the matte just lets the subject occlude the embed track. Never grade/recolor/scanline the footage.
+- **rail (default) + embed (promotion).** `drop` (filler, not shown) / `rail` (verbatim lower-third subtitle, in front, carries most text) / `embed` (a peak word composited behind the subject). **Rail-surface themes (e.g. `anchor`) do both**, embedding only the peak(s). See **§ Caption model**.
+- **The video is delivered UNTOUCHED (column-flow; **Theme mode's PLATE budget is the one sanctioned exception** — register-gated reaction beats (charge-dim, punch, shake, grain) defined per theme DNA and applied AFTER the matte composite so subject+text+plate move as one frame)** — captions are the only thing added; the matte just lets the subject occlude the embed track. Never grade/recolor/scanline the footage.
 - Two rulebooks: **rail → [references/rail.md](references/rail.md)** (thin), **embed craft → [references/composition-craft.md](references/composition-craft.md)** (rich, embed-only). Skim by need.
 
 ---
@@ -50,10 +50,10 @@ Rail-surface identities build exactly this (rail = `rail.html`, embed = the clim
 
 ## Step 0 — pick ONE identity from the CATALOG
 
-**One front-end, three engines behind.** The user picks an IDENTITY from
-[CATALOG.md](CATALOG.md) (17 entries: 12 classic + 5 themed); the engine,
+**One front-end, two engines behind.** The user picks an IDENTITY from
+[CATALOG.md](CATALOG.md) (48 entries: 10 column-flow + 38 themed); the engine,
 compiler and authoring file are derived by lookup from the catalog row.
-**Never surface "Standard vs Cinematic vs Theme" as a question** — those are
+**Never surface "Cinematic vs Theme" (or the retired Standard) as a question** — those are
 backend names (a product has one UX even with several engines). The catalog
 encodes everything routing needs: reading surface, voice, recommend-for, scene
 needs, adjacency notes for the genuinely-close pairs (loud↔ordnance,
@@ -165,30 +165,37 @@ each loop costs seconds. Render once, when the previews pass.
 
 ---
 
-## DNA registries — where each engine's looks live
+## The DNA registry — ten visual languages (replaces the template catalog)
 
-Every identity in [CATALOG.md](CATALOG.md) is backed by one **DNA file** — its complete
-visual language (type, palette logic, motion grammar, hero orchestration), **parameterized
-per scene** (accent sampled from the footage, contact shadow along the measured light,
-depth-match blur, RMS-coupled hero amplitude). DNAs live in **two registries, one per
-engine** — you never browse DNAs to route: pick the IDENTITY in CATALOG.md and its engine +
-registry are derived by lookup.
+Both modes draw from **[dna/](dna/README.md)** — six art-directed visual languages that
+**parameterize per scene** (accent sampled from the footage, contact shadow along the
+measured light direction, depth-match blur, RMS-coupled hero amplitude):
 
-- **Cinematic** → the 10 column-flow languages in **[dna/](dna/README.md)**: `cream` `ink`
-  `editorial` `keynote` `documentary` `loud` `neon` `glitch` `chrome` `velocity`.
-  `dna/README.md` holds the full table + the `bandLuma × register` decision rule; authoring:
-  `cinematic.json` takes `"dna": "<name>"`.
-- **Theme** → the themed constitutions in **[themes/](themes/README.md)**: `anchor`
-  `ordnance` `terminal` … (incl. the verbatim-rail `anchor`, which replaced the retired
-  Standard mode); authoring: `theme.json` takes `"dna": "<name>"`.
+| DNA             | Register       | Scene fit                                       | Voice                                                                                              |
+| --------------- | -------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **cream**       | premium-warm   | dark/mid warm scenes                            | Inter + warm cream + screen; glowing emergence hero (successor of cinematic-cream)                 |
+| **ink**         | premium        | **bright scenes (luma > 150)**                  | near-black multiply — type printed ON the wall; the bright-scene answer                            |
+| **editorial**   | editorial-luxe | introspective / fashion / poetic                | Bodoni Moda, lowercase-italic hero — magazine elegance                                             |
+| **keynote**     | tech-premium   | product / launch                                | opaque white Inter 800, dead-center stillness                                                      |
+| **documentary** | formal         | interview / serious                             | burn-in reveals, no hero — gravitas IS the style                                                   |
+| **loud**        | loud           | hype / sport / social                           | Anton + scene-sampled accent, single-unit slam + ripple; body ANNOUNCES in front (`bodyLayer: fg`) |
+| **neon**        | loud-cyber     | cyberpunk / nightlife / tech-noir (dark scenes) | electric-cyan signage, ignition flicker, the hero powers ON like a sign                            |
+| **glitch**      | loud-cyber     | digital / hacker / AI                           | RGB-split echoes snap together on landing; machine-percussive timing                               |
+| **chrome**      | loud-luxe      | Y2K / fashion-tech / music                      | liquid-metal gradient hero + one sheen sweep during the hold                                       |
+| **velocity**    | loud-sport     | sport / auto / fitness                          | every word arrives along its motion vector (streak+skew), hero passes with speed trails            |
+
+Pick by `safe-zones.json` (`heroAnchor.bandLuma`, `palette.temperature`) × content
+register — [dna/README.md](dna/README.md) has the decision rule. Authoring:
+`cinematic.json` takes `"dna": "<name>"`.
 
 The engine generates the **hero three-act** from the DNA (no authoring needed):
 co-visible captions dim (setup) → per-letter entrance with amplitude ∝ spoken loudness
 (impact) → breathe + glow until exit (afterglow).
 
-(Legacy: `plan.template:"cinematic-cream"` maps to `dna:"cream"` automatically. The retired
-54-template library lives at `~/Downloads/embedded-captions-archive/standard-templates-54/`;
-`_motion.md` remains in-skill as the motion-verb reference catalog.)
+(Legacy: `plan.template:"cinematic-cream"` maps to `dna:"cream"` automatically.
+The retired 54-template library lives outside the skill at
+`~/Downloads/embedded-captions-archive/standard-templates-54/`; `_motion.md` remains
+in-skill as the motion-verb reference catalog.)
 
 ---
 
@@ -216,7 +223,7 @@ The full **embed-track** playbook lives in **[references/composition-craft.md](r
 transcript role-annotation, phrase grouping, planes & clean-zone anchoring, zone coherence,
 climax pop & readability, edge-breathing, the occlusion 3-step judgement, and
 accumulation/persistence. It governs how a _promoted_ phrase sits INTO the scene — read it
-before authoring any embed (Cinematic `plan.json` or Standard `index.html`). The default **rail**
+before authoring any embed (Cinematic `plan.json` or a theme's `theme.json`). The default **rail**
 track has its own, much simpler spec → **[references/rail.md](references/rail.md)**.
 
 ---
@@ -254,7 +261,7 @@ track has its own, much simpler spec → **[references/rail.md](references/rail.
 - **Embed is scarce + spaced.** ≤1 embed per sentence/beat, never two adjacent or co-visible, ≥ a beat apart, at most one `apex`. climax = per-beat peak, **not** "the single payoff of the entire clip."
 - **Matte = the PERSON (hyperframes `remove-background`, u2net_human_seg, Apache-2.0).** Human segmentation by intent, but not surgically: thin offset furniture (mic boom arms) is usually excluded — captions render over it, behind the person — while large salient objects NEAR the subject (a telescope, a desk rig) can still leak into the matte and occlude captions. Objects HELD by the subject (products, phones) may drop out intermittently, letting captions pass in front. NEVER assume: sample `frames_fg/` at 2-3 timestamps before placing the hero, and prefer hero positions clear of any leaked furniture (`heroAnchor` can be skewed by leaks — cross-check against frames_bg).
 - **safe-zones is PROP-BLIND — eyeball every band you use.** Zones/heroBands score _subject_ occlusion + luma only: a mic, telescope, or screen sitting inside a "clean" zone is invisible to them (and a prop leaking INTO the matte skews `heroAnchor.centerXPct` off the person). Before authoring, extract ONE frame of each band you intend to use; if a prop lives there, measure its bbox and move/shrink the plane. Two real cases shipped clean only because the agent did exactly this. (Auto prop-saliency is a known gap; zones' `peakLuma` only catches _moving_ bright objects.)
-- **Captions stay on-frame.** Cinematic mode hard-gates frame-overflow; Standard mode runs `check-overflow.cjs` as a WARNING (intentional bleed is the only exception — read the warning).
+- **Captions stay on-frame.** Cinematic mode hard-gates frame-overflow; Theme mode runs `check-overflow.cjs` as a WARNING (intentional bleed is the only exception — read the warning).
 - **Each caption ≥ 0.5s on screen** — shorter = unreadable.
 - **Word timings must match transcript.json within 80ms** — a caption firing 500ms off-beat destroys the scene illusion. Cinematic runs `check-timing.cjs --strict` before rendering (via render-and-composite.sh); THEME mode enforces the same timings at compile time instead (make-theme's sequential transcript matcher + verbatim completeness gate — drift is a compile error). Never pack multiple transcript words into one entry (e.g. `"FUTURE OF"` or an `IT` + line-break + `ALL` stack with one start/end) — the second word inherits the first's timestamp and fires early. Split them into separate word entries with their own timings, even if you want them on the same visual line (use CSS `white-space` / natural wrap instead of `<br>`). Creative substitutions where caption text ≠ transcript (e.g. `"15%"` replacing `"fifteen percent"`) are supported — register them in `CREATIVE_SUBS` inside `check-timing.cjs`.
 - **Group windows must envelop their words** — `group.in ≤ min(word.start)` and `group.out ≥ max(word.end)` for every group. If `group.in` is later than a word's start, the word is silently delayed until the container mounts (we've shipped 800ms lag bugs from this). The validator enforces this.

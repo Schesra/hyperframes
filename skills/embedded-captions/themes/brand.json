@@ -1,0 +1,63 @@
+{
+  "name": "brand",
+  "voice": "a branding iron — everything is burned in. Body words SINGE onto a tooled-leather band (a low-amplitude iron press: tiny crush, contact squash, elastic settle, ember-hot glow receding into a charred edge, one smoke wisp); each line exits as smoke and leaves a dark word-shaped char smudge in the leather. The apex word SLAMS down behind the subject as a white-hot iron stamp that chars white → ember → deep brown while charred outlines grow in, a scorch radial darkens the scene and REMAINS to the last frame, then the word lifts away as smoke leaving its smudge.",
+  "when": "heritage, craft, leather-goods, whiskey/coffee, founder and maker brands, premium-rustic announcements — anywhere the message should feel permanent, made-by-hand, and seared in. Loud-warm register. Needs a dusk/warm scene that tolerates a charge-dim.",
+  "register": "loud",
+  "fonts": { "body": "Cinzel", "hero": "Cinzel", "tag": "Cinzel" },
+  "palette": {
+    "body": "#e8c697",
+    "hot": "#ffdfae",
+    "em": "#ffb066",
+    "char": "#150b05",
+    "leatherHi": "#483320",
+    "leather": "#3a2a1c",
+    "leatherLo": "#2e2013",
+    "stitch": "232,201,151"
+  },
+  "body": {
+    "paradigm": "leatherrail",
+    "layer": "fg",
+    "fontPx": 44,
+    "bottomPx": 69,
+    "letterSpacing": "0.035em",
+    "weight": 700,
+    "bandH": 94,
+    "singeScale": 1.12,
+    "emPulseDelay": 0.6,
+    "ghostOpacity": 0.2,
+    "seed": 34034034,
+    "yield": { "dim": 0.52, "pre": 0.12, "post": 0.5 }
+  },
+  "hero": {
+    "setpiece": "ironbrand",
+    "layer": "bg",
+    "x": 600,
+    "y": 314,
+    "fontPx": 124,
+    "params": {
+      "crush": 0.07,
+      "slamScale": 3.1,
+      "tracking": 0.03,
+      "weight": 700,
+      "white": "#fff6e8",
+      "ember": "#ff8a30",
+      "char": "#2b1a10",
+      "seed": 34034
+    }
+  },
+  "fx": { "flash": 0.62, "sparks": 8, "embers": 3, "seed": 34034034 },
+  "plate": {
+    "charge": 0.55,
+    "dim": 0.34,
+    "punch": 0.04,
+    "punchOffset": 0.07,
+    "punchDecay": 9,
+    "shakeAmpX": 5,
+    "shakeAmpY": 4,
+    "shakeHz": 11,
+    "shakeDecay": 7,
+    "shakeWindow": 0.5,
+    "grain": 6
+  },
+  "linkages": []
+}

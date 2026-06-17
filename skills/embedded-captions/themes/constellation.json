@@ -1,0 +1,46 @@
+{
+  "name": "constellation",
+  "voice": "a star chart drawn live — body words arrive as gold star-points that pop in at each letter, a hairline underline draws beneath, then the glyphs settle onto a faint declination/right-ascension grid; the apex word is handed off to the SKY, where stars twinkle in at its letter anchors, hairlines connect them in sequence, the word condenses in within the linework and a catalogue designation types beneath. Night quietly falls on the bright sky as it lands. Wonder, not spectacle.",
+  "when": "science, astronomy, optics/imaging, research and discovery clips, contemplative explainers, anything about looking up or seeing further. Wants a clip that tolerates a soft dusk-dim (the sky goes night-blue behind the subject). Calm-to-elegant register.",
+  "register": "calm",
+  "fonts": { "body": "Cormorant Garamond", "hero": "Cormorant Garamond", "tag": "VT323" },
+  "palette": {
+    "body": "#f2ead8",
+    "accent": "#ffd98c",
+    "em": "#f6e2ae",
+    "dot": "#ffd98c",
+    "tag": "#ffd98c",
+    "starCore": "#fff8e2"
+  },
+  "body": {
+    "paradigm": "starrail",
+    "layer": "fg",
+    "fontPx": 46,
+    "minorScale": 1.17,
+    "leftPx": 84,
+    "lineGap": 60,
+    "bottomPx": 72,
+    "chart": true,
+    "lblA": "DEC +38°",
+    "lblB": "R.A. 04h—09h",
+    "emTag": "α-CMa",
+    "seed": 2727,
+    "yield": { "dim": 0.55, "pre": 0.2, "post": 1.15 }
+  },
+  "hero": {
+    "setpiece": "starfield",
+    "match": "stars",
+    "layer": "bg",
+    "x": 725,
+    "y": 247,
+    "fontPx": 150,
+    "maxHold": 5.5,
+    "params": {
+      "stars": 5,
+      "desig": "STELLA·LIMITIS",
+      "seed": 4242
+    }
+  },
+  "plate": { "pushIn": 0.012, "grain": 5 },
+  "linkages": []
+}

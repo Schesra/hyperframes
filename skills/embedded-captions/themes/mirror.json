@@ -1,0 +1,47 @@
+{
+  "name": "mirror",
+  "voice": "the still-water surface — a black-mirror floor where every word RISES out of its own reflection and the reading face never moves; only the reflection ripples. The climax is a kaleidoscope merge: four rotated ghost copies of the hero word converge and SNAP into one sharp Bodoni word over a grand reflection, then sink back into the glass. Restraint as spectacle.",
+  "when": "reflective, contemplative, premium clips — science, design, photography, quiet product reveals, anything that wants elegance and stillness rather than impact. Calm register. Needs a scene with a darker lower band (the floor reflection lives there).",
+  "register": "calm",
+  "fonts": { "body": "Bodoni Moda", "hero": "Bodoni Moda", "tag": "Bodoni Moda" },
+  "palette": {
+    "body": "#f0f4f9",
+    "mirror": "#dce8f4",
+    "glow": "#86b4e4",
+    "ghost": "#bdd7f1",
+    "em": "#f3f7fc",
+    "halo": "120,160,210",
+    "silver": "190,210,235",
+    "silverHi": "228,240,252",
+    "streak": "225,238,255"
+  },
+  "body": {
+    "paradigm": "mirrorrail",
+    "layer": "fg",
+    "fontPx": 46,
+    "bottomPx": 89,
+    "weight": 400,
+    "letterSpacing": "0.02em",
+    "mirrorOpacity": 0.25,
+    "railWidth": 780,
+    "glintAt": 2.32,
+    "seed": 3033,
+    "yield": { "dim": 0.5, "pre": 0.2, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "mirrormerge",
+    "layer": "bg",
+    "fontPx": 110,
+    "maxHold": 2.2,
+    "params": {
+      "weight": 700,
+      "tracking": 0.03,
+      "ghostRot": [-24, -8, 8, 24],
+      "ghostOp": [0.13, 0.21, 0.21, 0.13],
+      "mergeDelay": 0.45,
+      "hold": 1.69
+    }
+  },
+  "plate": { "dim": 0.18, "pushIn": 0.012, "grain": 4 },
+  "linkages": []
+}

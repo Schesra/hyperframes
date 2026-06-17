@@ -1,0 +1,46 @@
+{
+  "name": "xray",
+  "voice": "an imaging scanner reads the speech. A hot vertical scan beam sweeps a dark radiograph band and WIPES each body word in exactly as it crosses — instant just-traced flash, ice-blue phosphor bones. At the apex the beam freezes and LOCKS the hero word behind the subject: a bracket target-frame snaps shut, an x-ray exposure pulse fires, the word flips to a glowing negative, a loupe ring passes over each letter, and a MATCH readout types. Then the beam returns flipped and scans the freeze-frame away R→L while the later lines reprint in its wake.",
+  "when": "imaging / sensing / AI / vision / measurement / forensics content, anything about detection, recovery, resolution, or seeing the unseen. Sleek-clinical register. Needs a darker mid-band tolerance for the radiograph band; the apex dim + exposure flash make their own contrast on bright skies.",
+  "register": "sleek",
+  "fonts": { "body": "VT323", "hero": "Orbitron", "tag": "Orbitron" },
+  "palette": {
+    "body": "#cfe8ff",
+    "accent": "#9fd8ff",
+    "flash": "#eaf7ff",
+    "em": "#eaf7ff",
+    "hud": "#5e8fa3",
+    "dim": "#03101e",
+    "heroWord": "#f2faff",
+    "negFill": "#071521",
+    "rim": "#9fd8ff"
+  },
+  "body": {
+    "paradigm": "beamrail",
+    "layer": "fg",
+    "fontPx": 42,
+    "bandH": 180,
+    "inset": 18,
+    "lineDy": 50,
+    "row0": 16,
+    "gapEm": 0.5,
+    "header": "RADIOGRAPH // T-24",
+    "tagText": "[DENSE]",
+    "maxTags": 3,
+    "yield": { "dim": 0.55, "pre": 0.06, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "scanlock",
+    "layer": "bg",
+    "fontPx": 116,
+    "params": {
+      "charEm": 0.819,
+      "spaceEm": 0.483,
+      "weight": 700,
+      "readout": "MATCH 99.2%",
+      "clearGap": 0.215
+    }
+  },
+  "plate": { "scrim": 0.3, "dim": 0.12, "grain": 5 },
+  "linkages": []
+}

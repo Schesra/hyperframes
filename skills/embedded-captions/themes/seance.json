@@ -1,0 +1,63 @@
+{
+  "name": "seance",
+  "voice": "a seance — the room is WRONG. The whole clip sits under a desaturated teal grade, a soft dim and a breathing vignette; bone words SEEP in on a centered two-row lower-third (a desat mist resolves into Shippori Mincho, blur 8→0, with a ±1-frame arrival jitter, the odd letter flickering, every shadow cast UPWARD). At the apex the lights dip hard and the spoken word MANIFESTS behind the subject in Creepster: it crushes in, squashes, settles, then shudders with a red/cyan split while a cold underlight breathes from below. A cold flash, two mist rings and an ash exhale ride the contact; the word finally exhales upward and is gone.",
+  "when": "the uncanny, the paranormal, true-crime and horror cold-opens, mystery and the supernatural, anything that should feel haunted or wrong. Loud-but-eerie register. Wants a clip that tolerates a dim teal grade and a behind-the-subject manifestation (20-50% occlusion).",
+  "register": "loud",
+  "fonts": { "body": "Shippori Mincho", "hero": "Creepster", "tag": "Shippori Mincho" },
+  "palette": {
+    "body": "#e8e2d4",
+    "accent": "#9fb0aa",
+    "em": "#e8e2d4",
+    "mist": "#9fb0aa",
+    "ghost": "#d4dcd2",
+    "haunt": "150,28,28",
+    "cool": "96,170,196",
+    "grade": "rgba(28,46,46,0.30)",
+    "under": "rgba(120,150,140,0.55)",
+    "heroInk": "#e8e2d4"
+  },
+  "body": {
+    "paradigm": "seancerail",
+    "layer": "fg",
+    "fontPx": 44,
+    "bottomPx": 66,
+    "rowGap": 58,
+    "weight": 600,
+    "hairline": true,
+    "hairW": 560,
+    "motes": 12,
+    "seed": 1212,
+    "yield": { "dim": 0.55, "pre": 0.2, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "possess",
+    "match": "remarkable",
+    "layer": "bg",
+    "x": 590,
+    "y": 285,
+    "fontPx": 140,
+    "maxHold": 1.5,
+    "out": 5.21,
+    "params": {
+      "crush": 0.065,
+      "tracking": 0.025,
+      "dim": 0.22,
+      "dimSnap": 0.55,
+      "hold": 0.37,
+      "seed": 1212
+    }
+  },
+  "fx": { "seance": 12, "seed": 1212 },
+  "plate": {
+    "punch": 0.04,
+    "punchOffset": 0.07,
+    "punchDecay": 10,
+    "shakeAmpX": 4,
+    "shakeAmpY": 3,
+    "shakeHz": 11,
+    "shakeDecay": 8,
+    "shakeWindow": 0.45,
+    "grain": 6
+  },
+  "linkages": []
+}

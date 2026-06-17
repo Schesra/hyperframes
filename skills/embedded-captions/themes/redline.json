@@ -1,0 +1,48 @@
+{
+  "name": "redline",
+  "voice": "night-circuit racing telemetry — captions move at speed. Body words DRIFT IN along a low track line with velocity streaks and two trailing echo copies that burn off; emphasis words gear-shift snap and sweep a tachometer arc into the redline. The apex arrives like a car at speed: a speck at a vanishing point that accelerates into a full italic slab across the frame, locks with a contact squash, paint cools from white-hot to bone, a heat-ripple trail shimmers behind it, then it whips off frame with a smear.",
+  "when": "high-energy, motion-forward, performance/automotive/sports/tech-velocity clips — anything that should feel fast and kinetic. Loud register. Needs a scene that tolerates a charge-dim (any luma) and an apex word that can cross the subject silhouette.",
+  "register": "loud",
+  "fonts": { "body": "Teko", "hero": "Teko", "tag": "Teko" },
+  "palette": { "body": "#f4f2ee", "accent": "#ff6a2b", "hot": "#ff6a2b", "em": "#ff6a2b" },
+  "body": {
+    "paradigm": "racingrail",
+    "layer": "fg",
+    "fontPx": 50,
+    "bottomPx": 71,
+    "letterSpacing": "0.04em",
+    "weight": 600,
+    "textTransform": "uppercase",
+    "emScale": 1.2,
+    "seed": 20260611,
+    "yield": { "dim": 0.45, "pre": 0.2, "post": 0.9 }
+  },
+  "hero": {
+    "setpiece": "doppler",
+    "layer": "bg",
+    "fontPx": 150,
+    "params": {
+      "tracking": 0.02,
+      "weight": 600,
+      "lock": 0.22,
+      "runup": 120,
+      "hot": "#ff6a2b",
+      "warm": "#ffd9c4",
+      "bone": "#f6f3ee"
+    }
+  },
+  "fx": { "dopplerboom": 14, "seed": 20260611 },
+  "plate": {
+    "dim": 0.38,
+    "punch": 0.045,
+    "punchOffset": 0.22,
+    "punchDecay": 9,
+    "shakeAmpX": 6,
+    "shakeAmpY": 4,
+    "shakeHz": 13,
+    "shakeDecay": 8,
+    "shakeWindow": 0.5,
+    "grain": 6
+  },
+  "linkages": []
+}
