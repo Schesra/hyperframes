@@ -52,7 +52,6 @@
       "washH": 420,
       "bleed": 0.38,
       "breatheHz": 0.55,
-      "sealGlyph": "観",
       "sealDelay": 0.04,
       "sealSize": 64,
       "seed": 380611

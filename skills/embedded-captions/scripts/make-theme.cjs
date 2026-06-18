@@ -248,7 +248,7 @@ function findPhrase(phrase) {
 }
 const heroInline = !!dna.hero.inline;
 // theme.hero is OPTIONAL: a heroless theme runs pure-body (the right authoring
-// for quiet briefs — "安静/每个词都要读到" wants no setpiece at all).
+// for quiet briefs — "quiet / every word must read" wants no setpiece at all).
 const HEROLESS = !theme.hero;
 if (HEROLESS) theme.hero = {};
 const hero = theme.hero.match ? findPhrase(theme.hero.match) : null;
@@ -7520,7 +7520,7 @@ function setpieceCpslam() {
           ${lay("cpR", RED)}
           ${lay("cpY", YEL)}
         </svg>
-        <div id="cpkana">${esc(p.kana || "サイバーパンク")}</div>
+        <div id="cpkana">${esc(p.kana || "CYBERPUNK")}</div>
       </div>`;
   // a climax is an EVENT: on long clips holding to clip-end turns it into
   // wallpaper. Default hold ~2.6s after the slam; hero.exitAt / params.hold override.
@@ -10929,7 +10929,7 @@ function setpieceBrushwrite() {
         <g id="bwSpatG"></g>
         <circle id="bwNib" r="7.5" fill="${dna.palette.nib || "#1a130c"}" opacity="0"/>
       </svg>
-      <div id="bwSeal"><span>${esc(p.sealGlyph || "観")}</span></div>`;
+      <div id="bwSeal"><span>${esc(p.sealGlyph || (heroDisplay.trim()[0] || "*").toUpperCase())}</span></div>`;
   const js = `
   // ---- setpiece: BRUSHWRITE (slap-down → one gesture → bleed + seal chop) ----
   const Ib = ${I.toFixed(3)}, WINb = ${WIN.toFixed(3)}, DRAWNb = ${DRAWN}, ENDTb = ${ENDT};
