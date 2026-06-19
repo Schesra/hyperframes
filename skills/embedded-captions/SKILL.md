@@ -246,15 +246,20 @@ track has its own, much simpler spec → **[references/rail.md](references/rail.
 
 ## Non-negotiables
 
-**Enforced for you — the gates/compiler guarantee these; don't hand-maintain them:**
+**Guaranteed by construction — nothing to maintain:**
 
-- **Word timing, group windows + overlap (Cinematic).** `check-timing.cjs --strict` (via render-and-composite.sh) enforces, on your authored `plan.json`: word timings within **80ms** of `transcript.json`; `group.in ≤ first word.start` and `group.out ≥ last word.end` (else the word is silently delayed/clipped); and no two groups overlapping in **both** time and vertical band. To pass: caption text = transcript verbatim (register intentional substitutions like `"15%"`←`"fifteen percent"` in `CREATIVE_SUBS`); **one transcript word per entry** — never pack `"FUTURE OF"` into one (the 2nd word inherits the 1st's timestamp and fires early); to keep two words on one visual line use CSS `white-space` / natural wrap, **not `<br>`**; resolve an overlap by a separate vertical band, handoff (`earlier.out ≤ later.in`), or `"allow_overlap": true` for deliberate layering.
-- **Word timing (Theme).** make-theme's compile-time sequential matcher COPIES each authored word's timing straight from `transcript.json` — exact **by construction**, not band-checked — and **hard-fails the compile** if your `lines` don't follow transcript order verbatim or drop a word.
-- **Captions stay on-frame.** Cinematic hard-gates off-frame text (`check-occlusion.cjs`); Theme warns (`check-overflow.cjs`) — intentional bleed is the only exception (read the warning).
-- **Determinism is by construction.** You author JSON, never GSAP — the engine emits deterministic, seek-safe code (no `Math.random` / `Date.now` / `repeat:-1`, and no `letter-spacing` / `filter:blur` animated on entrance, which reflows), and `hyperframes lint`/`validate` backstops it. You cannot introduce these.
-- **Captions never cover the face.** By construction — the embed sits BEHIND the subject, the rail is a lower-third. `check-occlusion.cjs --strict` additionally ABORTS the render if the subject hides a caption word (>65% occluded); the embed target is ~30–55% occluded (visible behind the speaker), not minimized.
+- **Determinism.** You author JSON, never GSAP — the engine emits deterministic, seek-safe code (no `Math.random` / `Date.now` / `repeat:-1`, and no `letter-spacing` / `filter:blur` animated on entrance, which reflows), and `hyperframes lint`/`validate` backstops it. You cannot introduce these.
+- **Theme word timing is exact.** make-theme's compile-time sequential matcher COPIES each authored word's timing straight from `transcript.json` (no drift possible) and **hard-fails the compile** if your `lines` don't follow transcript order verbatim or drop a word.
+- **Captions never cover the face.** Compositing order — the embed sits BEHIND the subject matte, the rail is a lower-third — so a caption physically cannot land on the face.
 
-**You must uphold these — the gates can't see them:**
+**A gate catches these — but you usually CAN'T predict them before previewing, so PREVIEW and iterate (the first compile/render often won't be right):**
+
+- **Caption hidden by the subject (occlusion).** Depends on the actual matte at that instant — NOT predictable from the JSON. The embed TARGET is ~30–55% occluded (big + visibly behind the speaker, not minimized); `check-occlusion.cjs --strict` ABORTS the render if the subject hides a caption word (>65%). On failure: move the hero to a clearer band / a different beat, or demote it. Catch it in `preview-frames.cjs`, never in a paid render.
+- **Captions stay on-frame.** Off-frame bleed depends on rendered text metrics, not the authored JSON — Cinematic hard-gates it (`check-occlusion.cjs`), Theme warns (`check-overflow.cjs`). Preview; if text clips, move/shrink the plane (intentional bleed is the only exception — read the warning).
+- **Cinematic word timing / group windows / overlap.** `check-timing.cjs --strict` enforces, on your `plan.json`: timings within **80ms** of `transcript.json`; `group.in ≤ first word.start` and `group.out ≥ last word.end` (else the word is silently delayed/clipped); no two groups overlapping in **both** time and vertical band. A failed compile names which — fix and recompile: caption text = transcript verbatim (intentional subs → `CREATIVE_SUBS`); **one transcript word per entry** (never pack `"FUTURE OF"` — the 2nd inherits the 1st's timestamp; keep two words on one line via CSS `white-space`, **not `<br>`**); resolve overlap by a separate band, handoff (`earlier.out ≤ later.in`), or `"allow_overlap": true`.
+- _(The non-gated iterative checks — washout, text-on-text, reading order, hero presence, balance — live in **§ Visual QA**; the gates can't see those either. Preview and fix before you render.)_
+
+**On you — no gate sees these (design judgement):**
 
 - **Never grade/recolor the footage.** It ships untouched; captions are the only addition. No full-frame scanlines / duotone / darken / vignette over the a-roll — CRT/cyberpunk texture belongs _inside_ a caption element. (Theme's register-gated **PLATE** reaction — charge-dim / punch / shake on the composite — is the one sanctioned exception.)
 - **Rail-first; embed is scarce + spaced.** Most text is the rail; embed only peaks — **≤1 per beat/thought, never two co-visible, ≥ a beat of air apart, at most one `apex`**. (Cinematic _warns_ when heroes are under a beat apart; in Theme it's on you.) Embedding every word is the default mistake. Full model → § Caption model.
