@@ -1,0 +1,10 @@
+{
+  "lines": [
+    ["The", "stars", "were", "only", "limited"],
+    ["by", "the", "pixel", "size"]
+  ],
+  "hero": {
+    "match": "remarkable"
+  },
+  "duration": 6.0
+}
