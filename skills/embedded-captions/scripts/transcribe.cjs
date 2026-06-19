@@ -24,10 +24,10 @@ function hfRoot() {
   process.exit(3);
 }
 // WhisperX runs through `uvx` (Astral's uv). uv is NOT bundled with hyperframes and most
-// installs lack it -> resolve it; OPT-IN auto-install with EC_INSTALL_UV=1 via the official
-// standalone installer (single binary, no Python/npm). Returns a uvx path, or null AFTER
-// printing a choice-nudge (install uv, or opt into whisper.cpp) — the caller then STOPS
-// rather than silently downgrading to whisper.cpp.
+// installs lack it -> resolve it, AUTO-INSTALLING by default via the official standalone
+// installer (single binary, no Python/npm; opt out with EC_NO_UV_INSTALL=1). Returns a uvx
+// path, or null only if auto-install is disabled or fails — the caller then STOPS (it won't
+// silently downgrade); TRANSCRIBE_ENGINE=whisper skips uv entirely (handled upstream).
 function resolveUvx() {
   const localBin = path.join(os.homedir(), ".local", "bin", "uvx");
   const probe = (bin) => {
@@ -40,19 +40,19 @@ function resolveUvx() {
   };
   const found = probe("uvx") || (fs.existsSync(localBin) ? probe(localBin) : null);
   if (found) return found;
-  if (process.env.EC_INSTALL_UV !== "1") {
+  // uv missing. DEFAULT: auto-install it via the official one-liner (single binary, no Python/npm).
+  // Opt out with EC_NO_UV_INSTALL=1 (-> nudge + STOP); TRANSCRIBE_ENGINE=whisper skips uv upstream.
+  if (process.env.EC_NO_UV_INSTALL === "1") {
     console.error(
-      "\n[transcribe] WhisperX needs `uv` (Astral) and it is not installed.\n" +
-        "  WhisperX gives the tight word timings this skill's caption gates are tuned for.\n" +
-        "  Pick one, then re-run:\n" +
-        "    1) RECOMMENDED -- install uv (one-time, no Python/npm):\n" +
-        "         re-run with  EC_INSTALL_UV=1   (auto-installs), or:\n" +
-        "         curl -LsSf https://astral.sh/uv/install.sh | sh\n" +
-        "    2) Skip uv, accept looser timings:  re-run with  TRANSCRIBE_ENGINE=whisper",
+      "\n[transcribe] uv not found, and EC_NO_UV_INSTALL=1 (auto-install disabled).\n" +
+        "  Install uv:  curl -LsSf https://astral.sh/uv/install.sh | sh\n" +
+        "  Or skip uv (looser whisper.cpp timings):  re-run with  TRANSCRIBE_ENGINE=whisper",
     );
     return null;
   }
-  console.error("[transcribe] EC_INSTALL_UV=1 -> installing uv (Astral standalone installer)...");
+  console.error(
+    "[transcribe] uv not found -> auto-installing (Astral standalone installer; single binary, no Python/npm)...",
+  );
   try {
     cp.execSync("curl -LsSf https://astral.sh/uv/install.sh | sh", { stdio: "inherit" });
   } catch (e) {
