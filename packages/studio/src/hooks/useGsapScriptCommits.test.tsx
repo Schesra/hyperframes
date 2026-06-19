@@ -83,7 +83,7 @@ describe("applyPreviewSync", () => {
     expect(reloadPreview).not.toHaveBeenCalled();
   });
 
-  it("instantPatch + patch fails + soft reload fails: escalates to full reload", () => {
+  it("instantPatch + patch fails + soft reload fails: keeps live state, NO full reload (U4)", () => {
     patchRuntimeTweenInPlace.mockReturnValue(false);
     applySoftReload.mockReturnValue(false);
     const reloadPreview = vi.fn();
@@ -99,7 +99,35 @@ describe("applyPreviewSync", () => {
       reloadPreview,
     );
 
-    expect(reloadPreview).toHaveBeenCalledTimes(1);
+    // U4 invariant: a softReload:true commit never escalates to a full iframe remount.
+    expect(reloadPreview).not.toHaveBeenCalled();
+  });
+
+  // CHARACTERIZATION (U4): captures the CURRENT trigger before the fallback
+  // change. A soft-reloadable edit (softReload:true) whose applySoftReload returns
+  // false today escalates to a full reloadPreview() (iframe remount). U4 flips this
+  // expectation below — this test asserts the pre-U4 behavior so the change is
+  // intentional, not a masked failure. (Kept as documentation; updated assertion.)
+  it("U4: softReload edit whose soft reload fails does NOT escalate to a full reload", () => {
+    patchRuntimeTweenInPlace.mockReturnValue(false);
+    applySoftReload.mockReturnValue(false);
+    const reloadPreview = vi.fn();
+
+    applyPreviewSync(
+      FAKE_IFRAME,
+      result({ scriptText: "SCRIPT" }),
+      {
+        label: "drag",
+        softReload: true,
+        instantPatch: { selector: "#a", change: { kind: "set", props: { x: 10 } } },
+      },
+      reloadPreview,
+    );
+
+    // New invariant: a softReload:true commit never triggers a full iframe remount.
+    // The live gsap.set already shows the committed value; remounting would re-inline
+    // subcompositions and intermittently revert their keyframes.
+    expect(reloadPreview).not.toHaveBeenCalled();
   });
 
   it("no instantPatch + softReload + scriptText: soft reloads (today's behavior)", () => {
@@ -118,7 +146,7 @@ describe("applyPreviewSync", () => {
     expect(reloadPreview).not.toHaveBeenCalled();
   });
 
-  it("no instantPatch + softReload that fails: full reload (today's behavior)", () => {
+  it("no instantPatch + softReload that fails: keeps live state, NO full reload (U4)", () => {
     applySoftReload.mockReturnValue(false);
     const reloadPreview = vi.fn();
 
@@ -129,10 +157,13 @@ describe("applyPreviewSync", () => {
       reloadPreview,
     );
 
-    expect(reloadPreview).toHaveBeenCalledTimes(1);
+    // U4 invariant: softReload edits never escalate to a full remount, even when the
+    // soft reload itself reports failure (e.g. a transient verifyTimelinesPopulated).
+    expect(applySoftReload).toHaveBeenCalledWith(FAKE_IFRAME, "SCRIPT");
+    expect(reloadPreview).not.toHaveBeenCalled();
   });
 
-  it("no instantPatch + no softReload: full reload (today's behavior)", () => {
+  it("no instantPatch + no softReload (structural): still full reloads", () => {
     const reloadPreview = vi.fn();
 
     applyPreviewSync(FAKE_IFRAME, result(), { label: "x" }, reloadPreview);

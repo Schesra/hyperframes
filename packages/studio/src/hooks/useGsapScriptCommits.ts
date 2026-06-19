@@ -68,7 +68,14 @@ export function applyPreviewSync(
     // Fall through to the soft/full reload path below.
   }
   if (options.softReload && result.scriptText) {
-    if (!applySoftReload(iframe, result.scriptText)) reloadPreview();
+    // A soft-reloadable edit (value/keyframe) must NEVER escalate to a full iframe
+    // remount: the remount is the worst visible flash AND it re-inlines
+    // subcompositions, intermittently reverting a subcomp's keyframes. The live
+    // gsap.set already shows the committed value, so even a transiently-failing
+    // applySoftReload (e.g. a momentary empty __timelines window) leaves a correct
+    // screen. We deliberately drop the old `if (!applySoftReload(...)) reloadPreview()`
+    // fallback here. Full reloadPreview() stays reserved for the structural path below.
+    applySoftReload(iframe, result.scriptText);
   } else {
     reloadPreview();
   }
@@ -136,8 +143,18 @@ export function useGsapScriptCommits({ projectIdRef, activeCompPath, previewIfra
   // the playhead) and invalidates the panel cache, matching the server path.
   const sdkRefresh = useCallback(
     (after: string) => {
+      // extractGsapScriptText returns null when zero/multiple GSAP scripts are
+      // present — that's an ambiguous/structural change that genuinely needs a full
+      // reload. But a SINGLE-script soft-reloadable edit must not escalate to a full
+      // remount even if applySoftReload reports failure (same U4 invariant as
+      // applyPreviewSync): the live state is already correct, and a remount re-inlines
+      // subcomps + reverts their keyframes.
       const script = extractGsapScriptText(after);
-      if (!(script && applySoftReload(previewIframeRef.current, script))) reloadPreview();
+      if (script) {
+        applySoftReload(previewIframeRef.current, script);
+      } else {
+        reloadPreview();
+      }
       onCacheInvalidate();
     },
     [previewIframeRef, reloadPreview, onCacheInvalidate],
