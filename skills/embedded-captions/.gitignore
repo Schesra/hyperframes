@@ -1,30 +1,4 @@
-# Matting weights: the PP-MattingV2 ONNX SHIPS with the skill (committed — the
-# upstream exports have no stable public download URL). Ignore any other stray
-# .onnx (e.g. experimental variants) so they don't get committed by accident.
-assets/*.onnx
-!assets/ppmattingv2_stdc1_human_544x960.onnx
-
-# Stray render/test artifacts — a project's outputs must never live inside the skill.
-*.mp4
-*.webm
-*.log
-_*.png
-frames_bg/
-frames_fg/
-history/
-*_shadow/
-transcript.json
-plan.json
-matte.fps
-safe-zones.json
-
-.DS_Store
-# CDPR fan-kit source SVG (528KB) — only its extracted metrics
-# (assets/brand/cyberpunk-widths.json) are consumed at runtime.
-assets/brand/Cyberpunk2077.svg
-
-# Golden-harness fixtures are real, tracked inputs (not per-project artifacts)
-!scripts/golden/fixtureA/transcript.json
-!scripts/golden/fixtureA/safe-zones.json
-!scripts/golden/fixtureB/transcript.json
-!scripts/golden/fixtureB/safe-zones.json
+# Regenerable font SOURCES (latin-subset woff2 from @fontsource/jsdelivr).
+# Inference reads the base64-inlined assets/fonts/fonts.css, NOT these — they are
+# build-only inputs for assets/fonts/build-fonts-css.cjs (re-fetch to rebuild fonts.css).
+assets/fonts/files/
