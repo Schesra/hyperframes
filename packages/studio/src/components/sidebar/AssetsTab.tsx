@@ -27,6 +27,7 @@ function AudioRow({
   projectId,
   asset,
   used,
+  meta,
   onCopy,
   isCopied,
   onDelete,
@@ -35,6 +36,7 @@ function AudioRow({
   projectId: string;
   asset: string;
   used: boolean;
+  meta?: { description?: string; duration?: number };
   onCopy: (path: string) => void;
   isCopied: boolean;
   onDelete?: (path: string) => void;
@@ -176,7 +178,9 @@ function AudioRow({
               {name}
             </span>
             {!playing && (
-              <span className="text-[11px] text-panel-text-5 flex-shrink-0">{subtype}</span>
+              <span className="text-[11px] text-panel-text-5 flex-shrink-0">
+                {meta?.duration ? `${meta.duration}s · ` : ""}{subtype}
+              </span>
             )}
             {used && (
               <span className="text-[9px] font-medium text-panel-accent bg-panel-accent/10 px-1.5 py-px rounded flex-shrink-0">
@@ -386,6 +390,25 @@ export const AssetsTab = memo(function AssetsTab({
   const [dragOver, setDragOver] = useState(false);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<MediaCategory | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [manifest, setManifest] = useState<Map<string, { description?: string; duration?: number; width?: number; height?: number }>>(new Map());
+
+  useEffect(() => {
+    fetch(`/api/projects/${projectId}/preview/.media/manifest.jsonl`)
+      .then((r) => (r.ok ? r.text() : ""))
+      .then((text) => {
+        const m = new Map<string, { description?: string; duration?: number; width?: number; height?: number }>();
+        for (const line of text.split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const rec = JSON.parse(line);
+            if (rec.path) m.set(rec.path, rec);
+          } catch { /* skip */ }
+        }
+        setManifest(m);
+      })
+      .catch(() => {});
+  }, [projectId, assets]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -416,10 +439,16 @@ export const AssetsTab = memo(function AssetsTab({
     return paths;
   }, [elements]);
 
-  const mediaAssets = useMemo(
-    () => assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a)),
-    [assets],
-  );
+  const mediaAssets = useMemo(() => {
+    const all = assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a));
+    if (!searchQuery) return all;
+    const q = searchQuery.toLowerCase();
+    return all.filter((a) => {
+      if (basename(a).toLowerCase().includes(q)) return true;
+      const rec = manifest.get(a);
+      return rec?.description?.toLowerCase().includes(q);
+    });
+  }, [assets, searchQuery, manifest]);
 
   const categorized = useMemo(() => {
     const groups: Record<MediaCategory, string[]> = { audio: [], images: [], video: [], fonts: [] };
@@ -497,6 +526,23 @@ export const AssetsTab = memo(function AssetsTab({
           </>
         )}
 
+        {/* Search */}
+        {mediaAssets.length > 0 && (
+          <div className="flex items-center gap-1.5 rounded-md bg-panel-input px-2.5 py-[5px] mb-2">
+            <svg width="12" height="12" viewBox="0 0 256 256" fill="none" className="flex-shrink-0">
+              <circle cx="116" cy="116" r="76" stroke="currentColor" strokeWidth="22" className="text-panel-text-5" />
+              <line x1="170" y1="170" x2="232" y2="232" stroke="currentColor" strokeWidth="22" strokeLinecap="round" className="text-panel-text-5" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search assets..."
+              className="min-w-0 w-full bg-transparent text-[11px] text-panel-text-1 outline-none placeholder:text-panel-text-5"
+            />
+          </div>
+        )}
+
         {/* Filter chips — panel-input style */}
         {mediaAssets.length > 0 && (
           <div className="flex gap-1.5 flex-wrap">
@@ -570,6 +616,7 @@ export const AssetsTab = memo(function AssetsTab({
                     projectId={projectId}
                     asset={a}
                     used={usedPaths.has(a)}
+                    meta={manifest.get(a)}
                     onCopy={handleCopyPath}
                     isCopied={copiedPath === a}
                     onDelete={onDelete}

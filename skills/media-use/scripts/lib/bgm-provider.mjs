@@ -28,6 +28,7 @@ export const bgmProvider = {
     if (!headers) return null;
 
     try {
+      process.env.HEYGEN_CLIENT_ORIGIN = "media-use";
       const { retrieveBgm } = await import(join(MEDIA_LIB, "bgm.mjs"));
       const hfDir = projectDir || process.cwd();
       const result = await retrieveBgm({ query: intent, headers, hyperframesDir: hfDir, hasVoice: false });

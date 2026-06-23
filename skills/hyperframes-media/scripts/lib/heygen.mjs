@@ -84,7 +84,8 @@ export function heygenAuthHeaders() {
 
 // Authed JSON request against the v3 API; throws on a non-OK status.
 export async function heygenJSON(path, { method = "GET", headers = {}, body } = {}) {
-  const opts = { method, headers: { ...headers } };
+  const origin = process.env.HEYGEN_CLIENT_ORIGIN || "hyperframes";
+  const opts = { method, headers: { ...headers, "X-HeyGen-Client-Origin": origin } };
   if (body !== undefined) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
