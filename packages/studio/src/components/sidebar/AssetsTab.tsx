@@ -195,6 +195,28 @@ export function countUsage(
   return { used, unused: assets.length - used };
 }
 
+/**
+ * Project-relative asset paths referenced by composition elements — the set the
+ * "in use" badge, used-first sort, and usage filter all key on. Element src is
+ * the raw authored value (timelineElementHelpers sets entry.src =
+ * getAttribute("src")), so it can be a relative path ("assets/x.png"), a
+ * "./"-prefixed path, the served "/api/projects/<id>/preview/assets/x.png" form,
+ * or carry a ?query — normalize all of them to the bare project path so they
+ * match the asset-list entries. Pure — unit-tested.
+ */
+export function deriveUsedPaths(elements: Array<{ src?: string }>): Set<string> {
+  const paths = new Set<string>();
+  for (const el of elements) {
+    if (!el.src) continue;
+    const s = el.src
+      .replace(/^\/api\/projects\/[^/]+\/preview\//, "") // strip the dev serve prefix
+      .replace(/^\.?\//, "") // strip leading ./ or /
+      .split(/[?#]/)[0]; // drop query / hash
+    if (s) paths.add(s);
+  }
+  return paths;
+}
+
 export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
@@ -270,16 +292,7 @@ export const AssetsTab = memo(function AssetsTab({
   }, []);
 
   const elements = usePlayerStore((s) => s.elements);
-  const usedPaths = useMemo(() => {
-    const paths = new Set<string>();
-    for (const el of elements) {
-      if (el.src) {
-        const src = el.src.replace(/^\/api\/projects\/[^/]+\/preview\//, "");
-        paths.add(src);
-      }
-    }
-    return paths;
-  }, [elements]);
+  const usedPaths = useMemo(() => deriveUsedPaths(elements), [elements]);
 
   const mediaAssets = useMemo(() => {
     const media = assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a));

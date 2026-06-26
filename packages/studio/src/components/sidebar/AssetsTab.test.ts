@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterByUsage, countUsage } from "./AssetsTab";
+import { filterByUsage, countUsage, deriveUsedPaths } from "./AssetsTab";
 
 const assets = ["bgm.mp3", "logo.png", "orphan.wav"];
 const used = new Set(["bgm.mp3", "logo.png"]);
@@ -20,6 +20,31 @@ describe("filterByUsage", () => {
   it("treats everything as unused when nothing is referenced", () => {
     expect(filterByUsage(assets, new Set(), "used")).toEqual([]);
     expect(filterByUsage(assets, new Set(), "unused")).toEqual(assets);
+  });
+});
+
+describe("deriveUsedPaths", () => {
+  it("matches the asset-list format across every src shape", () => {
+    const used = deriveUsedPaths([
+      { src: "assets/logo.png" }, // raw authored relative path
+      { src: "/api/projects/demo/preview/assets/bgm.mp3" }, // served form
+      { src: "./assets/icon.svg" }, // ./-prefixed
+      { src: "assets/clip.mp4?v=2" }, // cache-busted
+      {}, // no src — skipped
+    ]);
+    expect(used.has("assets/logo.png")).toBe(true);
+    expect(used.has("assets/bgm.mp3")).toBe(true);
+    expect(used.has("assets/icon.svg")).toBe(true);
+    expect(used.has("assets/clip.mp4")).toBe(true);
+    expect(used.size).toBe(4);
+  });
+
+  it("an authored relative src lines up with the asset entry (the live bug class)", () => {
+    const used = deriveUsedPaths([{ src: "assets/logo.png" }]);
+    // asset-list entries are project-relative (see serveUrl = preview/${asset})
+    expect(filterByUsage(["assets/logo.png", "assets/orphan.wav"], used, "used")).toEqual([
+      "assets/logo.png",
+    ]);
   });
 });
 
