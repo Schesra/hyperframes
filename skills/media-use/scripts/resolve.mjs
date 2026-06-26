@@ -18,6 +18,8 @@ const { values: args } = parseArgs({
     project: { type: "string", short: "p", default: "." },
     adopt: { type: "boolean", default: false },
     from: { type: "string" },
+    "allow-paid": { type: "boolean", default: false },
+    "local-only": { type: "boolean", default: false },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -140,10 +142,15 @@ async function run() {
     }
   }
 
+  // Cost guard (X4): paid generators run only when the user opted in
+  // (--allow-paid) and not when --local-only forces free/local providers.
+  const allowPaid = args["allow-paid"] && !args["local-only"];
+  const ctx = { entity, projectDir, allowPaid };
+
   // 3. provider search — registry tries providers in order (heygen-CLI first)
   let searchResult = null;
   try {
-    searchResult = await runCapability(type, "search", intent, { entity, projectDir });
+    searchResult = await runCapability(type, "search", intent, ctx);
   } catch {
     // search failed, try generate
   }
@@ -151,7 +158,7 @@ async function run() {
   // 4. generate fallback — same ordered cascade for the generate capability
   if (!searchResult) {
     try {
-      searchResult = await runCapability(type, "generate", intent, { entity, projectDir });
+      searchResult = await runCapability(type, "generate", intent, ctx);
     } catch {
       // generate failed too
     }

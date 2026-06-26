@@ -20,37 +20,41 @@ test("heygen provider is first for every type it serves", () => {
 });
 
 test("getProviders filters disabled by default, includes them on request", () => {
-  const enabled = getProviders("bgm");
-  const all = getProviders("bgm", { includeDisabled: true });
-  assert.ok(all.length > enabled.length, "expected gated providers to exist");
+  // icon still has a flag-gated provider (Iconify) — not yet approved.
+  const enabled = getProviders("icon");
+  const all = getProviders("icon", { includeDisabled: true });
+  assert.ok(all.length > enabled.length, "expected a gated provider (iconify) to exist");
   assert.ok(
     enabled.every((p) => p.enabled),
     "enabled list must not contain disabled providers",
   );
 });
 
-test("gated providers carry a gate reason (B-Q1 / B-Q2 / U-id)", () => {
-  const all = getProviders("bgm", { includeDisabled: true });
-  const disabled = all.filter((p) => !p.enabled);
-  assert.ok(disabled.length > 0, "bgm should have a disabled aggregator/local slot");
+test("still-gated providers carry a gate reason", () => {
+  const disabled = getProviders("icon", { includeDisabled: true }).filter((p) => !p.enabled);
+  assert.ok(disabled.length > 0, "iconify should still be gated");
   assert.ok(
     disabled.every((p) => typeof p.gated === "string" && p.gated.length > 0),
     "every disabled provider names why it is gated",
   );
 });
 
-test("the aggregator slot exists for bgm but is disabled (B-Q2)", () => {
-  const all = getProviders("bgm", { includeDisabled: true });
-  const agg = all.find((p) => p.name === "fal");
-  assert.ok(agg, "fal aggregator slot must be present (built, not shipped)");
-  assert.equal(agg.enabled, false);
-  assert.equal(agg.gated, "B-Q2");
+test("fal is now an approved, enabled, paid provider after heygen (Bin: B-Q2)", () => {
+  const ps = getProviders("bgm");
+  assert.match(ps[0].name, /^heygen/, "heygen stays first (free)");
+  const fal = ps.find((p) => p.name === "fal");
+  assert.ok(fal, "fal is live");
+  assert.equal(fal.enabled, true);
+  assert.equal(fal.paid, true);
+  assert.equal(typeof fal.generate, "function");
 });
 
-test("voice generation is gated on B-Q1 (no enabled provider yet)", () => {
-  assert.deepEqual(getProviders("voice"), []);
-  const all = getProviders("voice", { includeDisabled: true });
-  assert.ok(all.some((p) => p.gated === "B-Q1"));
+test("voice generation is live (Bin: B-Q1) — ElevenLabs + HeyGen TTS, paid", () => {
+  const ps = getProviders("voice");
+  const eleven = ps.find((p) => p.name === "elevenlabs");
+  assert.ok(eleven && eleven.enabled && eleven.paid, "elevenlabs live + paid");
+  assert.equal(typeof eleven.generate, "function");
+  assert.ok(ps.some((p) => p.name === "heygen.tts" && p.paid));
 });
 
 test("getProvider returns the first provider with its type, throws for unknown", () => {
@@ -117,34 +121,34 @@ test("runCapability('bgm','process') is null — process slot is graceful when u
   assert.equal(await runCapability("bgm", "process", "x", {}), null);
 });
 
-// --- flip-to-enable: Bin's answer is a flag, not a code change ----------------
+// --- cost guard: paid providers are opt-in per call (free-first) -------------
 
-function withEnv(name, value, fn) {
-  const prev = process.env[name];
-  process.env[name] = value;
-  try {
-    return fn();
-  } finally {
-    if (prev === undefined) delete process.env[name];
-    else process.env[name] = prev;
-  }
-}
-
-test("MEDIA_USE_ENABLE_FAL=1 enables the fal aggregator after heygen — no code change", () => {
-  withEnv("MEDIA_USE_ENABLE_FAL", "1", () => {
-    const ps = getProviders("bgm");
-    assert.equal(ps.length, 2);
-    assert.match(ps[0].name, /^heygen/, "heygen stays first");
-    assert.equal(ps[1].name, "fal");
-    assert.equal(ps[1].enabled, true);
-    assert.equal(typeof ps[1].generate, "function", "fal exposes generate when enabled");
+test("runProviders skips paid providers unless ctx.allowPaid", async () => {
+  let paidRan = false;
+  const providers = [
+    { name: "free", search: async () => null },
+    {
+      name: "paid",
+      paid: true,
+      search: async () => {
+        paidRan = true;
+        return { hit: "paid" };
+      },
+    },
+  ];
+  assert.equal(await runProviders(providers, "search", "x", {}), null, "paid skipped by default");
+  assert.equal(paidRan, false);
+  assert.deepEqual(await runProviders(providers, "search", "x", { allowPaid: true }), {
+    hit: "paid",
   });
 });
 
-test("MEDIA_USE_ENABLE_ELEVENLABS=1 enables voice generation (B-Q1 flip)", () => {
-  assert.deepEqual(getProviders("voice"), [], "off by default");
-  withEnv("MEDIA_USE_ENABLE_ELEVENLABS", "1", () => {
-    const ps = getProviders("voice");
-    assert.ok(ps.some((p) => p.name === "elevenlabs" && typeof p.generate === "function"));
+test("a free provider still wins over a paid one even when paid is allowed", async () => {
+  const providers = [
+    { name: "free", search: async () => ({ hit: "free" }) },
+    { name: "paid", paid: true, search: async () => ({ hit: "paid" }) },
+  ];
+  assert.deepEqual(await runProviders(providers, "search", "x", { allowPaid: true }), {
+    hit: "free",
   });
 });

@@ -21,31 +21,34 @@ import { brandProvider } from "./brand-provider.mjs";
 import { falGenerate } from "./aggregator-provider.mjs";
 import { elevenlabsGenerate, heygenTtsGenerate } from "./voice-provider.mjs";
 
-const A = (name, caps) => ({ name, always: true, ...caps }); // always-on
+const A = (name, caps) => ({ name, always: true, ...caps }); // always-on (free)
+const P = (name, caps) => ({ name, always: true, paid: true, ...caps }); // approved paid provider
 const G = (name, envFlag, gated, caps = {}) => ({ name, envFlag, gated, ...caps }); // flag-gated
 
-// heygen-first for everything it serves. fal / Iconify / voice slots are present
-// but flag-gated — see the file header.
+// heygen-first (free) for everything it serves; paid generators run only when the
+// caller opts in (see runProviders / --allow-paid). fal + voice were approved by
+// Bin (B-Q1/B-Q2) and are now live as paid providers. Iconify stays flag-gated —
+// not yet built/approved.
 const REGISTRY = {
   bgm: [
     A("heygen.audio.sounds", { search: bgmProvider.search }),
-    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("bgm") }),
+    P("fal", { generate: falGenerate("bgm") }),
   ],
   sfx: [
     A("heygen.audio.sounds", { search: sfxProvider.search }),
-    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("sfx") }),
+    P("fal", { generate: falGenerate("sfx") }),
   ],
   image: [
     A("heygen.asset.search", { search: imageProvider.search }),
-    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("image") }),
+    P("fal", { generate: falGenerate("image") }),
   ],
   icon: [
     A("heygen.asset.search", { search: iconProvider.search }),
     G("iconify", "MEDIA_USE_ENABLE_ICONIFY", "B-Q2"), // 200k+ open icons, fallback after heygen
   ],
   voice: [
-    G("elevenlabs", "MEDIA_USE_ENABLE_ELEVENLABS", "B-Q1", { generate: elevenlabsGenerate }),
-    G("heygen.tts", "MEDIA_USE_ENABLE_HEYGEN_TTS", "B-Q1", { generate: heygenTtsGenerate }),
+    P("elevenlabs", { generate: elevenlabsGenerate }),
+    P("heygen.tts", { generate: heygenTtsGenerate }),
   ],
   brand: [
     // Local design spec, not heygen — reads frame.md / design.md tokens.
@@ -93,9 +96,14 @@ export function getProvider(type) {
  * Run a capability across an explicit ordered provider list. Tries each in
  * order, returns the first non-null result, skips providers that don't expose
  * the capability. Pure over its input — the unit-testable core of the cascade.
+ *
+ * Cost guard (X4): a `paid` provider runs only when `ctx.allowPaid` is set — so
+ * free providers (heygen catalog) are always tried first and paid generation is
+ * opt-in per call. The agent passes allowPaid when the user asked for it.
  */
 export async function runProviders(providers, capability, intent, ctx) {
   for (const p of providers) {
+    if (p.paid && !ctx?.allowPaid) continue; // free-first; paid is opt-in
     const fn = p[capability];
     if (typeof fn !== "function") continue;
     const res = await fn(intent, ctx);

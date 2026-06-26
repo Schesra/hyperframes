@@ -50,14 +50,31 @@ node <SKILL_DIR>/scripts/resolve.mjs --type icon --intent "rocket" --project .
 
 ### Flags
 
-| Flag            | Description                                |
-| --------------- | ------------------------------------------ |
-| `--type, -t`    | Media type: bgm, sfx, image, icon          |
-| `--intent, -i`  | What you need (natural language)           |
-| `--entity, -e`  | Entity name for cache matching (optional)  |
-| `--project, -p` | Project directory (default: .)             |
-| `--adopt`       | Bulk-import existing assets/ into manifest |
-| `--json`        | Output JSON instead of one-line result     |
+| Flag            | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `--type, -t`    | Media type: bgm, sfx, image, icon, voice           |
+| `--intent, -i`  | What you need (natural language)                   |
+| `--entity, -e`  | Entity name for cache matching (optional)          |
+| `--project, -p` | Project directory (default: .)                     |
+| `--from`        | Freeze a local file or direct public URL (ingest)  |
+| `--allow-paid`  | Let paid generators run (fal / ElevenLabs); opt-in |
+| `--local-only`  | Free/local providers only; never call a paid one   |
+| `--adopt`       | Bulk-import existing assets/ into manifest         |
+| `--json`        | Output JSON instead of one-line result             |
+
+## Providers
+
+heygen-CLI is tried first (free catalog) for every type it serves. When the
+catalog misses and the user opts in with `--allow-paid`, generation runs:
+
+| Type          | Free (first)        | Paid generation (`--allow-paid`)    |
+| ------------- | ------------------- | ----------------------------------- |
+| bgm/sfx/image | heygen catalog      | **fal** (Flux / MiniMax / MMAudio)  |
+| voice         | —                   | **ElevenLabs**, then **heygen tts** |
+| icon          | heygen asset search | Iconify (gated, not yet enabled)    |
+
+Paid providers need their CLI installed + authed (`fal`, `elevenlabs`). They are
+never called without `--allow-paid`, and `--local-only` blocks them outright.
 
 ## How it works
 
