@@ -6,51 +6,59 @@
 // reproducible renders). heygen-CLI is always first for the types it serves.
 //
 // An entry exposes any of three capability methods — search / generate /
-// process — plus { name, enabled, gated? }. Disabled entries are the seams for
-// work that is decided-but-not-shipped: the `fal` aggregator and Iconify wait on
-// the Bin bundling decision (B-Q2); voice generation waits on B-Q1; the local
-// slot is filled by U2/U4. They live in the registry (so enabling them later is
-// a flag flip, not a refactor) but are skipped by getProviders() until enabled.
+// process — plus { name } and an enablement rule:
+//   - always:true                  -> always enabled (heygen, local design spec)
+//   - envFlag:"MEDIA_USE_ENABLE_X" -> enabled only when that env flag is set
+// Flag-gated entries are decided-but-not-shipped seams: the `fal` aggregator and
+// Iconify wait on the Bin bundling decision (B-Q2); voice (ElevenLabs / HeyGen
+// TTS) waits on B-Q1. They are fully built — flipping the flag enables them with
+// NO code change. `gated` records which decision gates them, for diagnostics.
 
 import { bgmProvider } from "./bgm-provider.mjs";
 import { sfxProvider } from "./sfx-provider.mjs";
 import { imageProvider, iconProvider } from "./image-provider.mjs";
 import { brandProvider } from "./brand-provider.mjs";
+import { falGenerate } from "./aggregator-provider.mjs";
+import { elevenlabsGenerate, heygenTtsGenerate } from "./voice-provider.mjs";
 
-const on = (name, caps) => ({ name, enabled: true, ...caps });
-const off = (name, gated, caps = {}) => ({ name, enabled: false, gated, ...caps });
+const A = (name, caps) => ({ name, always: true, ...caps }); // always-on
+const G = (name, envFlag, gated, caps = {}) => ({ name, envFlag, gated, ...caps }); // flag-gated
 
-// heygen-first for everything it serves. Aggregator (fal) / Iconify / local /
-// voice slots are present but gated — see the file header.
+// heygen-first for everything it serves. fal / Iconify / voice slots are present
+// but flag-gated — see the file header.
 const REGISTRY = {
   bgm: [
-    on("heygen.audio.sounds", { search: bgmProvider.search }),
-    off("fal", "B-Q2"), // aggregator music generation
-    off("local", "U2"), // local model generation
+    A("heygen.audio.sounds", { search: bgmProvider.search }),
+    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("bgm") }),
   ],
   sfx: [
-    on("heygen.audio.sounds", { search: sfxProvider.search }),
-    off("fal", "B-Q2"),
-    off("local", "U2"),
+    A("heygen.audio.sounds", { search: sfxProvider.search }),
+    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("sfx") }),
   ],
   image: [
-    on("heygen.asset.search", { search: imageProvider.search }),
-    off("fal", "B-Q2"), // aggregator image generation (Flux)
-    off("local", "U2"),
+    A("heygen.asset.search", { search: imageProvider.search }),
+    G("fal", "MEDIA_USE_ENABLE_FAL", "B-Q2", { generate: falGenerate("image") }),
   ],
   icon: [
-    on("heygen.asset.search", { search: iconProvider.search }),
-    off("iconify", "B-Q2"), // 200k+ open icons, fallback after heygen
+    A("heygen.asset.search", { search: iconProvider.search }),
+    G("iconify", "MEDIA_USE_ENABLE_ICONIFY", "B-Q2"), // 200k+ open icons, fallback after heygen
   ],
   voice: [
-    off("heygen.tts", "B-Q1"), // voice/TTS generation gated on Bin
-    off("local", "U2"),
+    G("elevenlabs", "MEDIA_USE_ENABLE_ELEVENLABS", "B-Q1", { generate: elevenlabsGenerate }),
+    G("heygen.tts", "MEDIA_USE_ENABLE_HEYGEN_TTS", "B-Q1", { generate: heygenTtsGenerate }),
   ],
   brand: [
     // Local design spec, not heygen — reads frame.md / design.md tokens.
-    on("design_spec", { search: brandProvider.search }),
+    A("design_spec", { search: brandProvider.search }),
   ],
 };
+
+const isEnabled = (p) => p.always === true || (p.envFlag ? envSet(p.envFlag) : false);
+
+function envSet(name) {
+  const v = process.env[name];
+  return v === "1" || v === "true";
+}
 
 function listFor(type) {
   const list = REGISTRY[type];
@@ -58,10 +66,13 @@ function listFor(type) {
   return list;
 }
 
-/** Ordered providers for a type. Disabled (gated) entries are excluded unless asked for. */
+// Add the computed `enabled` so callers/tests see a flat boolean.
+const tag = (p) => ({ ...p, enabled: isEnabled(p) });
+
+/** Ordered providers for a type. Disabled (flag-gated) entries are excluded unless asked for. */
 export function getProviders(type, { includeDisabled = false } = {}) {
-  const list = listFor(type);
-  return includeDisabled ? list.slice() : list.filter((p) => p.enabled);
+  const list = listFor(type).map(tag);
+  return includeDisabled ? list : list.filter((p) => p.enabled);
 }
 
 /** All declared media types. */
@@ -75,7 +86,7 @@ export function listTypes() {
  */
 export function getProvider(type) {
   const first = listFor(type)[0] || {};
-  return { ...first, type };
+  return { ...tag(first), type };
 }
 
 /**
