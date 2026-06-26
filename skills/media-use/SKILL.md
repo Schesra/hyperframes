@@ -7,6 +7,20 @@ description: Agent Media OS — the single skill for every media need in a Hyper
 
 The media OS for HyperFrames: resolve · generate · operate · remember — every media type, one skill, zero context noise.
 
+## What it owns (the gaps HyperFrames leaves)
+
+HyperFrames owns media _playback_; media-use owns everything else. Each row is enforced by `scripts/lib/coverage.test.mjs` so the claim can't rot.
+
+| HyperFrames gap                            | media-use owns it via                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| Audio-only — no image/icon                 | `resolve --type image\|icon` (heygen asset search)                           |
+| No voice / audio generation                | `resolve --type voice` + the audio engine (`audio/scripts/audio.mjs`)        |
+| Scattered/duplicated audio engine          | one consolidated engine under `audio/` (hyperframes-media retired)           |
+| No agent media-ops (cut/reframe/transform) | `references/operations.md` + `resolve --from` to register outputs            |
+| No cross-project memory                    | global content-addressed cache + auto-promote (`~/.media`)                   |
+| Weak local-model defaults                  | spec-gated local models (tts/asr/upscale) via `scripts/lib/local-models.mjs` |
+| No paid generation fallback                | fal + ElevenLabs, cost-guarded (`--allow-paid` / `--local-only`)             |
+
 ## When to use
 
 Call `resolve` whenever a composition needs media — background music, sound effects, images, icons, or voice. For voiceover / TTS, transcription, captions, and background removal, use the **audio engine** (below). For cutting / reframing / transforming existing media, see `references/operations.md`. media-use searches the HeyGen catalog first, freezes the best match locally, registers it in a manifest, and hands the agent one line; all search noise stays on disk.

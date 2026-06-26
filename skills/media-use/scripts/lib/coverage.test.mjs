@@ -1,0 +1,59 @@
+import { strict as assert } from "node:assert";
+import { test } from "node:test";
+import { existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { listTypes, getProviders } from "./registry.mjs";
+import { CAPABILITIES, listModels } from "./local-models.mjs";
+
+// Capstone: media-use must actually OWN each hyperframes media weakness. This
+// test enforces the weakness→owner matrix in SKILL.md so a claim can't rot — if
+// a capability's entrypoint disappears, this fails.
+
+const SKILL = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+test("weakness: audio-only → media-use resolves image + icon", () => {
+  for (const t of ["image", "icon"]) {
+    assert.ok(getProviders(t).length > 0, `no provider for ${t}`);
+  }
+});
+
+test("weakness: no voice/audio gen → media-use exposes voice + the audio engine", () => {
+  assert.ok(listTypes().includes("voice"), "voice type missing");
+  assert.ok(getProviders("voice").length > 0, "no enabled voice provider (Bin approved)");
+  assert.ok(existsSync(join(SKILL, "audio", "scripts", "audio.mjs")), "audio engine missing");
+});
+
+test("weakness: scattered audio engine → consolidated under media-use (hyperframes-media gone)", () => {
+  assert.ok(existsSync(join(SKILL, "audio", "scripts", "lib", "tts.mjs")), "tts engine missing");
+  assert.ok(
+    existsSync(join(SKILL, "audio", "assets", "sfx", "manifest.json")),
+    "bundled SFX missing",
+  );
+});
+
+test("weakness: no media-ops → ops guidance reference exists", () => {
+  assert.ok(existsSync(join(SKILL, "references", "operations.md")), "operations.md missing");
+});
+
+test("weakness: no cross-project memory → global cache + ingest entrypoints exist", async () => {
+  const cache = await import("./cache.mjs");
+  assert.equal(typeof cache.cachePut, "function");
+  assert.equal(typeof cache.promote, "function");
+  assert.equal(typeof cache.globalMediaDir, "function");
+  const freeze = await import("./freeze.mjs");
+  assert.equal(typeof freeze.isDirectMediaUrl, "function", "ingest URL guard missing");
+});
+
+test("weakness: weak local defaults → spec-gated local models cover tts/asr/upscale", () => {
+  for (const cap of ["tts", "asr", "upscale"]) {
+    assert.ok(CAPABILITIES.includes(cap), `capability ${cap} missing`);
+    assert.ok(listModels(cap).length > 0, `no local models for ${cap}`);
+  }
+});
+
+test("every resolve type has at least one enabled provider", () => {
+  for (const t of listTypes()) {
+    assert.ok(getProviders(t).length > 0, `type ${t} has no enabled provider`);
+  }
+});
