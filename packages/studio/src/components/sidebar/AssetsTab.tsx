@@ -172,6 +172,29 @@ function ImageCard({
   );
 }
 
+export type UsageFilter = "all" | "used" | "unused";
+
+/** Filter assets by whether the composition references them. Pure — unit-tested. */
+export function filterByUsage(
+  assets: string[],
+  usedPaths: Set<string>,
+  usageFilter: UsageFilter,
+): string[] {
+  if (usageFilter === "used") return assets.filter((a) => usedPaths.has(a));
+  if (usageFilter === "unused") return assets.filter((a) => !usedPaths.has(a));
+  return assets;
+}
+
+/** Count used vs unused over a media set. Pure — unit-tested. */
+export function countUsage(
+  assets: string[],
+  usedPaths: Set<string>,
+): { used: number; unused: number } {
+  let used = 0;
+  for (const a of assets) if (usedPaths.has(a)) used++;
+  return { used, unused: assets.length - used };
+}
+
 export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
@@ -183,6 +206,7 @@ export const AssetsTab = memo(function AssetsTab({
   const [dragOver, setDragOver] = useState(false);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<MediaCategory | "all">("all");
+  const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [manifest, setManifest] = useState<
     Map<string, { description?: string; duration?: number; width?: number; height?: number }>
@@ -258,7 +282,8 @@ export const AssetsTab = memo(function AssetsTab({
   }, [elements]);
 
   const mediaAssets = useMemo(() => {
-    const all = assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a));
+    const media = assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a));
+    const all = filterByUsage(media, usedPaths, usageFilter);
     if (!searchQuery) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((a) => {
@@ -266,7 +291,7 @@ export const AssetsTab = memo(function AssetsTab({
       const rec = manifest.get(a);
       return rec?.description?.toLowerCase().includes(q);
     });
-  }, [assets, searchQuery, manifest]);
+  }, [assets, searchQuery, manifest, usageFilter, usedPaths]);
 
   const categorized = useMemo(() => {
     const groups: Record<MediaCategory, string[]> = { audio: [], images: [], video: [], fonts: [] };
@@ -290,6 +315,17 @@ export const AssetsTab = memo(function AssetsTab({
     for (const cat of FILTER_ORDER) c[cat] = categorized[cat].length;
     return c;
   }, [mediaAssets, categorized]);
+
+  // Usage counts over the full media set (independent of the active usage filter,
+  // so the chips don't show their own filtered totals).
+  const usageCounts = useMemo(
+    () =>
+      countUsage(
+        assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a)),
+        usedPaths,
+      ),
+    [assets, usedPaths],
+  );
 
   const visibleCategories =
     activeFilter === "all"
@@ -404,6 +440,32 @@ export const AssetsTab = memo(function AssetsTab({
                   {CATEGORY_LABELS[cat]} {counts[cat]}
                 </button>
               ) : null,
+            )}
+            {/* Usage filter — show only assets the composition references, or only the unused ones */}
+            {usageCounts.used > 0 && usageCounts.unused > 0 && (
+              <>
+                <span className="w-px self-stretch bg-panel-input mx-0.5" aria-hidden="true" />
+                <button
+                  onClick={() => setUsageFilter(usageFilter === "used" ? "all" : "used")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                    usageFilter === "used"
+                      ? "bg-panel-accent/15 text-panel-accent"
+                      : "bg-panel-input text-panel-text-3 hover:text-panel-text-1"
+                  }`}
+                >
+                  In use {usageCounts.used}
+                </button>
+                <button
+                  onClick={() => setUsageFilter(usageFilter === "unused" ? "all" : "unused")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                    usageFilter === "unused"
+                      ? "bg-panel-accent/15 text-panel-accent"
+                      : "bg-panel-input text-panel-text-3 hover:text-panel-text-1"
+                  }`}
+                >
+                  Unused {usageCounts.unused}
+                </button>
+              </>
             )}
           </div>
         )}
