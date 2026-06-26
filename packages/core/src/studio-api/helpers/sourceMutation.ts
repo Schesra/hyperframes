@@ -404,6 +404,9 @@ export interface WrapElementsResult {
 export interface UnwrapElementsResult {
   html: string;
   unwrapped: boolean;
+  /** The unwrapped wrapper's id, so callers can strip GSAP that targeted it
+   *  (the wrapper is gone; a leftover `gsap.set("#id")` would throw at runtime). */
+  unwrappedGroupId?: string;
 }
 
 export interface ElementRebase {
@@ -419,6 +422,23 @@ function getInlineStylePx(el: Element, property: string): number {
   if (!raw) return 0;
   const n = parseFloat(raw);
   return Number.isFinite(n) ? n : 0;
+}
+
+// Slug the group name ("Group 1" → "group-1") into a unique, valid element id.
+function uniqueGroupDomId(document: Document, groupId: string): string {
+  const base =
+    groupId
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "group";
+  let id = base;
+  let n = 2;
+  while (document.getElementById(id)) {
+    id = `${base}-${n}`;
+    n += 1;
+  }
+  return id;
 }
 
 function setInlineLeftTop(el: HTMLElement, left: number, top: number): void {
@@ -478,6 +498,10 @@ export function wrapElementsInHtml(
 
   const wrapper = document.createElement("div");
   wrapper.setAttribute("data-hf-group", groupId);
+  // A real `id` (slug of the group name) makes the wrapper a first-class node in the
+  // clip manifest / timeline parent-map (both keyed by id) and a clean GSAP target —
+  // without it the wrapper is invisible to the timeline and breaks child enumeration.
+  wrapper.setAttribute("id", uniqueGroupDomId(document, groupId));
   wrapper.setAttribute(
     "style",
     `position: absolute; left: ${bbox.left}px; top: ${bbox.top}px; width: ${bbox.width}px; height: ${bbox.height}px`,
@@ -524,10 +548,12 @@ export function unwrapElementsFromHtml(
     }
     parent.insertBefore(child, group);
   }
+  const groupId = group.id || undefined;
   group.remove();
 
   return {
     html: wrappedFragment ? document.body.innerHTML || "" : document.toString(),
     unwrapped: true,
+    unwrappedGroupId: groupId,
   };
 }
