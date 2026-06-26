@@ -1,15 +1,15 @@
 ---
 name: media-use
-description: Agent Media OS — resolve any media need (BGM, SFX, image, icon) into a frozen local file + ledger record. One verb (`resolve`) handles the full cascade — project cache, global cache, HeyGen catalog search, freeze, register. Keeps search noise on disk, hands the agent a path. Use when a composition needs background music, sound effects, images, or icons.
+description: Agent Media OS — the single skill for every media need in a HyperFrames project. Resolve BGM, SFX, image, icon, or voice into a frozen local file + ledger record (one verb, `resolve`); generate via TTS / music / image models when the catalog misses; produce voiceover, transcription, captions, and background removal through one shared audio engine; operate on media (cut / reframe / transform); and reuse assets across projects. Keeps search noise on disk, hands the agent a path. Use for any audio, image, icon, voiceover, caption, or media-asset need.
 ---
 
 # media-use
 
-Resolve media needs into frozen local files. One verb, four types, zero context noise.
+The media OS for HyperFrames: resolve · generate · operate · remember — every media type, one skill, zero context noise.
 
 ## When to use
 
-Call `resolve` whenever a composition needs media — background music, sound effects, images, or icons. media-use searches the HeyGen catalog, downloads the best match, freezes it locally, and registers it in a manifest. The agent gets back one line; all search noise stays on disk.
+Call `resolve` whenever a composition needs media — background music, sound effects, images, icons, or voice. For voiceover / TTS, transcription, captions, and background removal, use the **audio engine** (below). For cutting / reframing / transforming existing media, see `references/operations.md`. media-use searches the HeyGen catalog first, freezes the best match locally, registers it in a manifest, and hands the agent one line; all search noise stays on disk.
 
 ## Resolve
 
@@ -122,6 +122,24 @@ Assets are cached automatically on resolve. Subsequent resolves for the same pro
 - `.media/manifest.jsonl` — machine SSOT, one JSON record per line
 - `.media/index.md` — agent-readable table (id, type, dur, dims, path, description)
 - `~/.media/` — global cross-project reuse cache (content-addressed, SHA-256)
+
+## Audio engine — voiceover, music, SFX, captions, transcription
+
+For a full audio pass (TTS voiceover + background music + sound effects in one
+shot), use the shared engine at `audio/scripts/audio.mjs`. It takes a neutral
+`audio_request.json` and writes `audio_meta.json` plus assets under
+`.media/audio/{voice,bgm,sfx}`:
+
+```bash
+node <SKILL_DIR>/audio/scripts/audio.mjs --request ./audio_request.json --out ./audio_meta.json
+```
+
+- **Request** `{ provider?, lang?, speed?, lines: [{ id, text, sfx?: [names] }], bgm: { mode?, query?, prompt? } }` — `id` joins each line back to your model; `bgm.mode` = `retrieve | generate | none` (omit for auto). `--only tts,bgm,sfx` runs a subset and merges into an existing `--out`.
+- **Output** `audio_meta.json` (id-keyed): `voices[].{path,duration_s,words[]}` (word timestamps for captions), `sfx[]`, `bgm`, `total_duration_s`.
+- **Auto-degrades on one switch** — HeyGen credential present → HeyGen TTS + music/SFX retrieval; absent → ElevenLabs/Kokoro TTS, Lyria/MusicGen BGM generation, and the bundled SFX library (no credential needed).
+- If BGM took the generate path (`bgm_pending: true`), run `audio/scripts/wait-bgm.mjs` before final render.
+
+Single-shot helpers: `audio/scripts/heygen-tts.mjs` (one voice file). Transcription / background removal / captions use the `hyperframes` CLI (`transcribe`, `remove-background`) — see the per-topic guides in `audio/references/` (`tts.md`, `bgm.md`, `sfx.md`, `transcribe.md`, `remove-background.md`, `captions/`).
 
 ## Operating on media (cut, reframe, transform)
 
