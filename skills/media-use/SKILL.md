@@ -106,6 +106,15 @@ Assets are cached automatically on resolve. Subsequent resolves for the same pro
 - `.media/index.md` — agent-readable table (id, type, dur, dims, path, description)
 - `~/.media/` — global cross-project reuse cache (content-addressed, SHA-256)
 
+## Operating on media (cut, reframe, transform)
+
+media-use resolves + remembers; for **operating** on assets see
+`references/operations.md` — local-tool recipes (ffmpeg trim/reframe/montage,
+auto-editor, scenedetect) and the local-vs-HeyGen transform table (background
+removal, upscale, lipsync, translate). Run the tool, then register the output
+with `resolve --from <output> --type <type>` so it joins the ledger + global
+cache.
+
 ## CLI tools used
 
 | Tool      | Purpose                                    | Required?     |
