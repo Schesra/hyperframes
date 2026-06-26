@@ -253,6 +253,11 @@
       // gsapParser.ts: recast/babel GSAP writer — intentional duplication between
       // recast and acorn parallel implementations (pre-existing, moved from core).
       "packages/parsers/src/gsapParser.ts",
+      // hfIds.ts: 7-line clone with sdk/engine/mutate.ts — pre-existing duplication
+      // from when hfIds lived in packages/core/src/parsers/. Moving the file to the
+      // new package makes fallow see it as a fresh finding; the underlying clone
+      // predates this refactor.
+      "packages/parsers/src/hfIds.ts",
       // Parser test files: parallel arrange/act/assert test cases — pre-existing
       // duplication moved from packages/core/src/parsers/.
       "packages/parsers/src/gsapParser.test.ts",
