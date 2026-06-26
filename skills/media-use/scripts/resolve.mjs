@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
-import { resolve, join, extname } from "node:path";
+import { resolve, join, extname, basename } from "node:path";
 import { parseArgs } from "node:util";
 import { appendRecord, findByPrompt, findByEntity, nextId, typeSubdir } from "./lib/manifest.mjs";
 import { regenerateIndex } from "./lib/index-gen.mjs";
 import { cacheGet, cacheGetByEntity, importFromCache, cachePut } from "./lib/cache.mjs";
 import { runCapability, listTypes } from "./lib/registry.mjs";
-import { freezeUrl, freezeLocalFile } from "./lib/freeze.mjs";
+import { freezeUrl, freezeLocalFile, isDirectMediaUrl } from "./lib/freeze.mjs";
 import { findExistingAsset } from "./lib/adopt.mjs";
 
 const { values: args } = parseArgs({
@@ -17,6 +17,7 @@ const { values: args } = parseArgs({
     entity: { type: "string", short: "e" },
     project: { type: "string", short: "p", default: "." },
     adopt: { type: "boolean", default: false },
+    from: { type: "string" },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -54,6 +55,12 @@ if (args.adopt) {
     console.log(`adopted ${adopted.length} asset${adopted.length === 1 ? "" : "s"} from assets/`);
     for (const r of adopted) console.log(`  ${r.id} → ${r.path} (${r.type})`);
   }
+  process.exit(0);
+}
+
+// Ingest: freeze a user-supplied local file or direct public URL (no search).
+if (args.from) {
+  await ingest(args.from);
   process.exit(0);
 }
 
@@ -151,12 +158,16 @@ async function run() {
   }
 
   if (!searchResult) {
+    // brand stays local: no frame.md/design.md -> upsell the HyperFrames design
+    // flow rather than reporting a generic miss (B5).
+    const msg =
+      type === "brand"
+        ? "no brand spec found — add a frame.md or design.md (colors/font/logo) to this project. Run the HyperFrames design flow to create one; brand tokens are read locally for deterministic rendering."
+        : `no provider could resolve ${type}: "${intent}"`;
     if (args.json) {
-      console.log(
-        JSON.stringify({ ok: false, error: `no provider could resolve ${type}: "${intent}"` }),
-      );
+      console.log(JSON.stringify({ ok: false, error: msg }));
     } else {
-      console.error(`error: no provider could resolve ${type}: "${intent}"`);
+      console.error(`error: ${msg}`);
     }
     process.exit(1);
   }
@@ -209,6 +220,48 @@ async function run() {
     // promotion is best-effort; a resolve still succeeds locally
   }
   return result(record, searchResult.source || "search");
+}
+
+async function ingest(src) {
+  const projectDir = resolve(args.project);
+  const type = args.type;
+  if (!type || !listTypes().includes(type)) {
+    console.error(`error: --from requires --type (one of: ${listTypes().join(", ")})`);
+    process.exit(2);
+  }
+  const isUrl = /^https?:\/\//i.test(src);
+  if (isUrl && !isDirectMediaUrl(src)) {
+    console.error(
+      `error: --from takes a direct public media URL or a local file; "${src}" is not a direct media link (no platform pages / yt-dlp)`,
+    );
+    process.exit(2);
+  }
+  if (!isUrl && !existsSync(resolve(src))) {
+    console.error(`error: file not found: ${src}`);
+    process.exit(2);
+  }
+  const id = nextId(projectDir, type);
+  const ext = extname(isUrl ? new URL(src).pathname : src) || defaultExt(type);
+  const localPath = `.media/${typeSubdir(type)}/${id}${ext}`;
+  const fullPath = join(projectDir, localPath);
+  if (isUrl) await freezeUrl(src, fullPath);
+  else freezeLocalFile(resolve(src), fullPath);
+  const record = {
+    id,
+    type,
+    path: localPath,
+    source: "ingested",
+    description: basename(src.split("?")[0]),
+    provenance: { provider: "local", from: src },
+  };
+  appendRecord(projectDir, record);
+  regenerateIndex(projectDir);
+  try {
+    cachePut(fullPath, record); // surface ingested assets globally too (B3)
+  } catch {
+    // best-effort
+  }
+  result(record, "ingested");
 }
 
 function result(record, source) {

@@ -24,3 +24,23 @@ export function freezeLocalFile(srcPath, destPath) {
   mkdirSync(dirname(destPath), { recursive: true });
   copyFileSync(srcPath, destPath);
 }
+
+// Ingest accepts a DIRECT public media URL only — not a platform page. yt-dlp is
+// deliberately out (cloud IPs get blocked, and it's brittle); the supported case
+// is "user points at their own file or a direct asset link". A direct URL is a
+// non-platform host whose path ends in a known media extension.
+const PLATFORM_HOSTS =
+  /(^|\.)(youtube\.com|youtu\.be|vimeo\.com|tiktok\.com|instagram\.com|twitter\.com|x\.com|facebook\.com|dailymotion\.com)$/i;
+const MEDIA_EXT = /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv|png|jpe?g|webp|gif|svg|avif)$/i;
+
+export function isDirectMediaUrl(u) {
+  let url;
+  try {
+    url = new URL(u);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  if (PLATFORM_HOSTS.test(url.hostname)) return false;
+  return MEDIA_EXT.test(url.pathname);
+}
