@@ -6,7 +6,7 @@ import { parseArgs } from "node:util";
 import { appendRecord, findByPrompt, findByEntity, nextId, typeSubdir } from "./lib/manifest.mjs";
 import { regenerateIndex } from "./lib/index-gen.mjs";
 import { cacheGet, cacheGetByEntity, importFromCache } from "./lib/cache.mjs";
-import { getProvider, listTypes } from "./lib/providers.mjs";
+import { runCapability, listTypes } from "./lib/registry.mjs";
 import { freezeUrl, freezeLocalFile } from "./lib/freeze.mjs";
 import { findExistingAsset } from "./lib/adopt.mjs";
 
@@ -59,6 +59,11 @@ if (args.adopt) {
 
 if (!args.type || !args.intent) {
   console.error("error: --type and --intent are required");
+  process.exit(2);
+}
+
+if (!listTypes().includes(args.type)) {
+  console.error(`error: unknown media type: ${args.type} (known: ${listTypes().join(", ")})`);
   process.exit(2);
 }
 
@@ -128,19 +133,18 @@ async function run() {
     }
   }
 
-  // 3. provider search
-  const provider = getProvider(type);
+  // 3. provider search — registry tries providers in order (heygen-CLI first)
   let searchResult = null;
   try {
-    searchResult = await provider.search(intent, { entity, projectDir });
+    searchResult = await runCapability(type, "search", intent, { entity, projectDir });
   } catch {
     // search failed, try generate
   }
 
-  // 4. generate fallback
-  if (!searchResult && provider.generate) {
+  // 4. generate fallback — same ordered cascade for the generate capability
+  if (!searchResult) {
     try {
-      searchResult = await provider.generate(intent, { entity, projectDir });
+      searchResult = await runCapability(type, "generate", intent, { entity, projectDir });
     } catch {
       // generate failed too
     }
