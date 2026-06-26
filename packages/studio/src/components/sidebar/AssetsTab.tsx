@@ -14,6 +14,7 @@ import {
   FILTER_ORDER,
 } from "./assetHelpers";
 import { AudioRow } from "./AudioRow";
+import { GlobalAssetsView } from "./GlobalAssetsView";
 
 interface AssetsTabProps {
   projectId: string;
@@ -230,6 +231,9 @@ export const AssetsTab = memo(function AssetsTab({
   const [activeFilter, setActiveFilter] = useState<MediaCategory | "all">("all");
   const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  // Cross-project view: the global media-use cache (~/.media). The view itself
+  // (GlobalAssetsView) owns its fetch — AssetsTab only tracks which scope is active.
+  const [viewMode, setViewMode] = useState<"local" | "global">("local");
   const [manifest, setManifest] = useState<
     Map<string, { description?: string; duration?: number; width?: number; height?: number }>
   >(new Map());
@@ -357,6 +361,22 @@ export const AssetsTab = memo(function AssetsTab({
     >
       {/* Header — matches design panel Section pattern */}
       <div className="px-4 pt-2.5 pb-1.5 flex-shrink-0">
+        {/* Scope toggle — this project's assets vs the global media-use cache */}
+        <div className="flex gap-1 mb-2.5 p-0.5 rounded-md bg-panel-input">
+          {(["local", "global"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setViewMode(m)}
+              className={`flex-1 px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+                viewMode === m
+                  ? "bg-panel-accent/15 text-panel-accent"
+                  : "text-panel-text-3 hover:text-panel-text-1"
+              }`}
+            >
+              {m === "local" ? "This project" : "All projects"}
+            </button>
+          ))}
+        </div>
         {/* Import */}
         {onImport && (
           <>
@@ -426,8 +446,8 @@ export const AssetsTab = memo(function AssetsTab({
           </div>
         )}
 
-        {/* Filter chips — panel-input style */}
-        {mediaAssets.length > 0 && (
+        {/* Filter chips — panel-input style (local view only) */}
+        {viewMode === "local" && mediaAssets.length > 0 && (
           <div className="flex gap-1.5 flex-wrap">
             <button
               onClick={() => setActiveFilter("all")}
@@ -486,7 +506,9 @@ export const AssetsTab = memo(function AssetsTab({
 
       {/* Asset list */}
       <div className="flex-1 overflow-y-auto mt-1">
-        {mediaAssets.length === 0 ? (
+        {viewMode === "global" ? (
+          <GlobalAssetsView searchQuery={searchQuery} />
+        ) : mediaAssets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-4 gap-2">
             <svg
               width="24"
