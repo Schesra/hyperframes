@@ -1,14 +1,12 @@
 import { execFileSync } from "node:child_process";
 
-// Voice/TTS generation. Default-OFF (B-Q1); enable once Bin approves voiceover:
-//   ElevenLabs CLI -> MEDIA_USE_ENABLE_ELEVENLABS=1
-//   HeyGen TTS     -> MEDIA_USE_ENABLE_HEYGEN_TTS=1
-// Both shell their own CLI (CLI-only invariant: media-use holds no keys).
-//
-// ponytail: exact CLI flags/output aren't verified here (CLIs not installed).
-// Confirm against each CLI's --help when first flipped on. Wiring is the point.
+// Voice / TTS generation. HeyGen TTS is the free-first default (uses the wallet
+// credential you already hold for the catalog); ElevenLabs is the paid fallback
+// behind --allow-paid. Both shell their own CLI (CLI-only invariant: media-use
+// holds no keys). HeyGen flags verified against `heygen voice speech create
+// --help` (v0.1.6); ElevenLabs flags are unverified until first exercised.
 
-function runJson(bin, argv) {
+function runJson(bin, argv, label) {
   let out;
   try {
     out = execFileSync(bin, argv, {
@@ -18,7 +16,7 @@ function runJson(bin, argv) {
     });
   } catch (err) {
     console.error(
-      `media-use: \`${bin}\` tts failed: ${err.stderr?.toString().trim() || err.message}`,
+      `media-use: \`${bin}\` ${label} failed: ${err.stderr?.toString().trim() || err.message}`,
     );
     return null;
   }
@@ -29,21 +27,48 @@ function runJson(bin, argv) {
   }
 }
 
-function result(url, provider, intent) {
+function result(url, duration, provider, intent) {
   if (!url) return null;
   return {
     url,
     source: "generated",
-    metadata: { description: intent, provider, provenance: { prompt: intent } },
+    metadata: {
+      description: intent,
+      provider,
+      ...(duration != null && { duration }),
+      provenance: { prompt: intent },
+    },
   };
 }
 
-export async function elevenlabsGenerate(intent) {
-  const p = runJson("elevenlabs", ["tts", "--text", intent, "--json"]);
-  return result(p?.url || p?.audio_url, "elevenlabs", intent);
+// HeyGen TTS requires a starfish-engine voice. Default to the first one the
+// catalog returns (deterministic order); pass ctx.voiceId to override.
+// ponytail: listed once per process; the resolved asset is frozen + cached after
+// first use, so the network list only happens on a cache miss.
+let cachedVoiceId;
+function defaultVoiceId() {
+  if (cachedVoiceId !== undefined) return cachedVoiceId;
+  const j = runJson(
+    "heygen",
+    ["voice", "list", "--engine", "starfish", "--limit", "1"],
+    "voice list",
+  );
+  cachedVoiceId = j?.data?.[0]?.voice_id || null;
+  return cachedVoiceId;
 }
 
-export async function heygenTtsGenerate(intent) {
-  const p = runJson("heygen", ["voice", "tts", "--text", intent]);
-  return result(p?.data?.audio_url || p?.audio_url, "heygen.tts", intent);
+export async function heygenTtsGenerate(intent, ctx) {
+  const voiceId = ctx?.voiceId || defaultVoiceId();
+  if (!voiceId) return null;
+  const p = runJson(
+    "heygen",
+    ["voice", "speech", "create", "--text", intent, "--voice-id", voiceId],
+    "tts",
+  );
+  return result(p?.data?.audio_url, p?.data?.duration, "heygen.tts", intent);
+}
+
+export async function elevenlabsGenerate(intent) {
+  const p = runJson("elevenlabs", ["tts", "--text", intent, "--json"], "tts");
+  return result(p?.url || p?.audio_url, p?.duration, "elevenlabs", intent);
 }

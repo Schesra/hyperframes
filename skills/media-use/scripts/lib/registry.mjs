@@ -7,12 +7,12 @@
 //
 // An entry exposes any of three capability methods — search / generate /
 // process — plus { name } and an enablement rule:
-//   - always:true                  -> always enabled (heygen, local design spec)
+//   - always:true                  -> always enabled (heygen, fal, voice, design spec)
 //   - envFlag:"MEDIA_USE_ENABLE_X" -> enabled only when that env flag is set
-// Flag-gated entries are decided-but-not-shipped seams: the `fal` aggregator and
-// Iconify wait on the Bin bundling decision (B-Q2); voice (ElevenLabs / HeyGen
-// TTS) waits on B-Q1. They are fully built — flipping the flag enables them with
-// NO code change. `gated` records which decision gates them, for diagnostics.
+// fal generation and voice (HeyGen TTS free-first, ElevenLabs paid) are live
+// (Bin B-Q1/B-Q2). Iconify is the one remaining flag-gated seam: fully built,
+// flipping MEDIA_USE_ENABLE_ICONIFY enables it with no code change. `gated`
+// records which decision gates it, for diagnostics.
 
 import { bgmProvider } from "./bgm-provider.mjs";
 import { sfxProvider } from "./sfx-provider.mjs";
