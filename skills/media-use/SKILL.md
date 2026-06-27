@@ -41,6 +41,7 @@ Returns one line: `resolved <id> → <path> (<type>, <metadata>)`
 | `sfx`   | Sound effects       | Bundled 19-file library + HeyGen catalog |
 | `image` | Photos, backgrounds | HeyGen asset search (75k+ vectors)       |
 | `icon`  | Icons, logos        | HeyGen asset search (type=icon)          |
+| `voice` | TTS voiceover       | HeyGen TTS (free), ElevenLabs (paid)     |
 
 ### Examples
 
