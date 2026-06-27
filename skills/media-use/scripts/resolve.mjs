@@ -142,10 +142,12 @@ async function run() {
     }
   }
 
-  // Cost guard (X4): paid generators run only when the user opted in
-  // (--allow-paid) and not when --local-only forces free/local providers.
-  const allowPaid = args["allow-paid"] && !args["local-only"];
-  const ctx = { entity, projectDir, allowPaid };
+  // Cost guard: paid generators run only with --allow-paid. Offline guard:
+  // --local-only skips every remote provider (HeyGen catalog + all paid), leaving
+  // the project + global cache and any local provider.
+  const localOnly = args["local-only"];
+  const allowPaid = args["allow-paid"] && !localOnly;
+  const ctx = { entity, projectDir, allowPaid, localOnly };
 
   // 3. provider search — registry tries providers in order (heygen-CLI first)
   let searchResult = null;

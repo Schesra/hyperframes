@@ -49,12 +49,19 @@ test("fal is now an approved, enabled, paid provider after heygen (Bin: B-Q2)", 
   assert.equal(typeof fal.generate, "function");
 });
 
-test("voice generation is live (Bin: B-Q1) — ElevenLabs + HeyGen TTS, paid", () => {
+test("voice: HeyGen TTS is free + first, ElevenLabs is the paid fallback (Bin: B-Q1)", () => {
   const ps = getProviders("voice");
+  assert.equal(ps[0].name, "heygen.tts", "free HeyGen TTS comes first");
+  assert.equal(ps[0].paid ?? false, false, "HeyGen TTS is free (same credential as catalog)");
+  assert.equal(typeof ps[0].generate, "function");
   const eleven = ps.find((p) => p.name === "elevenlabs");
-  assert.ok(eleven && eleven.enabled && eleven.paid, "elevenlabs live + paid");
-  assert.equal(typeof eleven.generate, "function");
-  assert.ok(ps.some((p) => p.name === "heygen.tts" && p.paid));
+  assert.ok(eleven && eleven.paid, "ElevenLabs is the paid fallback");
+});
+
+test("voice resolves by default (no --allow-paid) via free HeyGen TTS", async () => {
+  // The regression M2 guarded against: voice must not be paid-only.
+  const free = getProviders("voice").filter((p) => !p.paid);
+  assert.ok(free.length > 0, "at least one free voice provider so resolve works by default");
 });
 
 test("getProvider returns the first provider with its type, throws for unknown", () => {
@@ -151,4 +158,23 @@ test("a free provider still wins over a paid one even when paid is allowed", asy
   assert.deepEqual(await runProviders(providers, "search", "x", { allowPaid: true }), {
     hit: "free",
   });
+});
+
+test("--local-only skips every network provider (even free remote ones)", async () => {
+  let remoteRan = false;
+  const providers = [
+    {
+      name: "heygen",
+      network: true,
+      search: async () => {
+        remoteRan = true;
+        return { hit: "net" };
+      },
+    },
+    { name: "local", search: async () => ({ hit: "local" }) },
+  ];
+  assert.deepEqual(await runProviders(providers, "search", "x", { localOnly: true }), {
+    hit: "local",
+  });
+  assert.equal(remoteRan, false, "the remote provider must not be called offline");
 });

@@ -21,34 +21,39 @@ import { brandProvider } from "./brand-provider.mjs";
 import { falGenerate } from "./aggregator-provider.mjs";
 import { elevenlabsGenerate, heygenTtsGenerate } from "./voice-provider.mjs";
 
-const A = (name, caps) => ({ name, always: true, ...caps }); // always-on (free)
-const P = (name, caps) => ({ name, always: true, paid: true, ...caps }); // approved paid provider
-const G = (name, envFlag, gated, caps = {}) => ({ name, envFlag, gated, ...caps }); // flag-gated
+// Provider markers: `network` = hits a remote service (skipped by --local-only);
+// `paid` = costs money (skipped unless --allow-paid). HeyGen (catalog + TTS) uses
+// the credential you already hold for the free catalog, so it is network-but-free.
+const A = (name, caps) => ({ name, always: true, ...caps }); // always-on, local
+const N = (name, caps) => ({ name, always: true, network: true, ...caps }); // remote, free
+const P = (name, caps) => ({ name, always: true, network: true, paid: true, ...caps }); // remote, paid
+const G = (name, envFlag, gated, caps = {}) => ({ name, envFlag, gated, network: true, ...caps }); // remote, flag-gated
 
-// heygen-first (free) for everything it serves; paid generators run only when the
-// caller opts in (see runProviders / --allow-paid). fal + voice were approved by
-// Bin (B-Q1/B-Q2) and are now live as paid providers. Iconify stays flag-gated —
-// not yet built/approved.
+// Order = free-first: HeyGen (remote, free) before fal/voice (remote, paid). Paid
+// generators run only with --allow-paid; all remote providers are skipped by
+// --local-only. fal + voice (ElevenLabs / HeyGen TTS) are live (Bin B-Q1/B-Q2);
+// Iconify stays flag-gated (MEDIA_USE_ENABLE_ICONIFY) until approved.
 const REGISTRY = {
   bgm: [
-    A("heygen.audio.sounds", { search: bgmProvider.search }),
+    N("heygen.audio.sounds", { search: bgmProvider.search }),
     P("fal", { generate: falGenerate("bgm") }),
   ],
   sfx: [
-    A("heygen.audio.sounds", { search: sfxProvider.search }),
+    N("heygen.audio.sounds", { search: sfxProvider.search }),
     P("fal", { generate: falGenerate("sfx") }),
   ],
   image: [
-    A("heygen.asset.search", { search: imageProvider.search }),
+    N("heygen.asset.search", { search: imageProvider.search }),
     P("fal", { generate: falGenerate("image") }),
   ],
   icon: [
-    A("heygen.asset.search", { search: iconProvider.search }),
+    N("heygen.asset.search", { search: iconProvider.search }),
     G("iconify", "MEDIA_USE_ENABLE_ICONIFY", "B-Q2"), // 200k+ open icons, fallback after heygen
   ],
   voice: [
+    // HeyGen TTS is free (same credential as the catalog); ElevenLabs is the paid fallback.
+    N("heygen.tts", { generate: heygenTtsGenerate }),
     P("elevenlabs", { generate: elevenlabsGenerate }),
-    P("heygen.tts", { generate: heygenTtsGenerate }),
   ],
   brand: [
     // Local design spec, not heygen — reads frame.md / design.md tokens.
@@ -99,11 +104,13 @@ export function getProvider(type) {
  *
  * Cost guard (X4): a `paid` provider runs only when `ctx.allowPaid` is set — so
  * free providers (heygen catalog) are always tried first and paid generation is
- * opt-in per call. The agent passes allowPaid when the user asked for it.
+ * opt-in per call. Offline guard: a `network` provider is skipped when
+ * `ctx.localOnly` is set, leaving only the cache + local providers.
  */
 export async function runProviders(providers, capability, intent, ctx) {
   for (const p of providers) {
-    if (p.paid && !ctx?.allowPaid) continue; // free-first; paid is opt-in
+    if (p.paid && !ctx?.allowPaid) continue; // paid is opt-in
+    if (p.network && ctx?.localOnly) continue; // --local-only: cache + local only
     const fn = p[capability];
     if (typeof fn !== "function") continue;
     const res = await fn(intent, ctx);
