@@ -18,7 +18,7 @@ HyperFrames owns media _playback_; media-use owns everything else. Each row is e
 | Scattered/duplicated audio engine          | one consolidated engine under `audio/` (hyperframes-media retired)                          |
 | No agent media-ops (cut/reframe/transform) | `references/operations.md` + `resolve --from` to register outputs                           |
 | No cross-project memory                    | global content-addressed cache + auto-promote (`~/.media`)                                  |
-| Weak local-model defaults                  | spec-gated local-model runner (`scripts/lib/local-run.mjs`, user-installed tts/asr/upscale) |
+| Weak local-model defaults                  | free-usage HeyGen first (TTS, bg-removal) via the `heygen` CLI; local open-source only as an opt-out fallback (`scripts/lib/local-run.mjs`) |
 | No paid generation fallback                | fal + ElevenLabs, cost-guarded (`--allow-paid` / `--local-only`)                            |
 
 ## When to use
@@ -72,7 +72,7 @@ node <SKILL_DIR>/scripts/resolve.mjs --type icon --intent "rocket" --project .
 | `--entity, -e`  | Entity name for cache matching (optional)                 |
 | `--project, -p` | Project directory (default: .)                            |
 | `--from`        | Freeze a local file or direct public URL (ingest)         |
-| `--allow-paid`  | Let paid generators run (fal / ElevenLabs); opt-in        |
+| `--allow-paid`  | Let paid generators run (fal / ElevenLabs); agent's call  |
 | `--local-only`  | Offline: skip every network provider (cache + local only) |
 | `--adopt`       | Bulk-import existing assets/ into manifest                |
 | `--json`        | Output JSON instead of one-line result                    |
@@ -80,7 +80,9 @@ node <SKILL_DIR>/scripts/resolve.mjs --type icon --intent "rocket" --project .
 ## Providers
 
 heygen-CLI is tried first (free catalog) for every type it serves. When the
-catalog misses and the user opts in with `--allow-paid`, generation runs:
+catalog misses, the agent may run paid generation with `--allow-paid` — the
+agent decides at its own discretion; there is no user-confirmation prompt
+(free-first still means cache + heygen are always tried before anything paid):
 
 | Type          | Free (first)        | Paid generation (`--allow-paid`)   |
 | ------------- | ------------------- | ---------------------------------- |

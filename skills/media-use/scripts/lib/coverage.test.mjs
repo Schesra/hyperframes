@@ -45,7 +45,10 @@ test("weakness: no cross-project memory → global cache + ingest entrypoints ex
   assert.equal(typeof freeze.isDirectMediaUrl, "function", "ingest URL guard missing");
 });
 
-test("weakness: weak local defaults → spec-gated local models cover tts/asr/upscale", () => {
+// Wenbo (06-29): heygen free-usage is the default; local models are the opt-out
+// fallback ("if user no, then local"). We still assert the fallback table is
+// populated so the opt-out path stays real.
+test("weakness: weak local defaults → local models exist as the opt-out fallback (tts/asr/upscale)", () => {
   for (const cap of ["tts", "asr", "upscale"]) {
     assert.ok(CAPABILITIES.includes(cap), `capability ${cap} missing`);
     assert.ok(listModels(cap).length > 0, `no local models for ${cap}`);
