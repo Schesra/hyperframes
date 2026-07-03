@@ -81,11 +81,11 @@ The `heygen` CLI is the only external CLI media-use shells (media-use holds no
 keys; the CLI owns auth). It is tried first — and is currently the only
 provider — for every type it serves:
 
-| Type          | Provider                                          |
-| ------------- | ------------------------------------------------- |
-| bgm/sfx/image | heygen catalog (free)                             |
-| voice         | **heygen tts** (free, same credential)            |
-| icon          | heygen asset search; Iconify (gated, not enabled) |
+| Type          | Provider                               |
+| ------------- | -------------------------------------- |
+| bgm/sfx/image | heygen catalog (free)                  |
+| voice         | **heygen tts** (free, same credential) |
+| icon          | heygen asset search                    |
 
 `--local-only` skips every network provider — including the free HeyGen ones —
 leaving the project + global cache and any local provider.

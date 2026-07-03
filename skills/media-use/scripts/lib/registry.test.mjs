@@ -19,31 +19,14 @@ test("heygen provider is first for every type it serves", () => {
   }
 });
 
-test("getProviders filters disabled by default, includes them on request", () => {
-  // icon still has a flag-gated provider (Iconify) — not yet approved.
-  const enabled = getProviders("icon");
-  const all = getProviders("icon", { includeDisabled: true });
-  assert.ok(all.length > enabled.length, "expected a gated provider (iconify) to exist");
-  assert.ok(
-    enabled.every((p) => p.enabled),
-    "enabled list must not contain disabled providers",
-  );
-});
-
-test("still-gated providers carry a gate reason", () => {
-  const disabled = getProviders("icon", { includeDisabled: true }).filter((p) => !p.enabled);
-  assert.ok(disabled.length > 0, "iconify should still be gated");
-  assert.ok(
-    disabled.every((p) => typeof p.gated === "string" && p.gated.length > 0),
-    "every disabled provider names why it is gated",
-  );
-});
-
-test("heygen is the only external CLI: no fal / elevenlabs providers remain", () => {
+test("heygen is the only external provider: no fal / elevenlabs / iconify remain", () => {
   for (const t of listTypes()) {
-    const names = getProviders(t, { includeDisabled: true }).map((p) => p.name);
-    assert.ok(!names.includes("fal"), `${t} still lists fal`);
-    assert.ok(!names.includes("elevenlabs"), `${t} still lists elevenlabs`);
+    for (const p of getProviders(t)) {
+      assert.ok(
+        /^heygen/.test(p.name) || p.name === "design_spec",
+        `${t} lists non-heygen provider: ${p.name}`,
+      );
+    }
   }
 });
 
