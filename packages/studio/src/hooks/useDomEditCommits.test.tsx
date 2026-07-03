@@ -44,7 +44,7 @@ function makeShowToast() {
 }
 
 function ensureCssEscape(): void {
-  const escape = (value: string) => value.replace(/"/g, '\\"');
+  const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   if (typeof globalThis.CSS === "undefined") {
     Object.defineProperty(globalThis, "CSS", {
       value: { escape },
