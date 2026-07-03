@@ -414,13 +414,31 @@ export const compositionRules: Array<(ctx: LintContext) => HyperframeLintFinding
         const current = clips[i];
         const next = clips[i + 1];
         if (!current || !next) continue;
-        if (current.end - next.start > OVERLAP_EPSILON_SECONDS) {
+        const gap = next.start - current.end;
+        if (gap < -OVERLAP_EPSILON_SECONDS) {
           findings.push({
             code: "overlapping_clips_same_track",
             severity: "error",
             message: `Track ${track}: clip ending at ${current.end}s overlaps with clip starting at ${next.start}s. Overlapping clips on the same track cause rendering conflicts.`,
             fixHint:
               "Adjust data-start or data-duration so clips on the same track do not overlap, or move one clip to a different data-track-index.",
+          });
+        } else if (gap <= OVERLAP_EPSILON_SECONDS) {
+          // The runtime's clip-visibility check (isTimedElementVisibleAt) is
+          // inclusive on both ends: currentTime >= start && currentTime <=
+          // end. When one clip's end exactly equals the next clip's start,
+          // both conditions are true for both clips at that single instant,
+          // so they render simultaneously for one frame — a real, observed
+          // double-visibility glitch, not a false positive. Warning, not
+          // error: authors legitimately chain clips back-to-back with zero
+          // gap constantly, and a hard-kill on the earlier clip's exit
+          // already avoids the glitch in most compositions.
+          findings.push({
+            code: "adjacent_clips_touch_exact_boundary",
+            severity: "warning",
+            message: `Track ${track}: clip ending at ${current.end}s and the next clip starting at ${next.start}s touch at the exact same instant. The runtime's clip-visibility check is inclusive on both ends, so both clips can render simultaneously for one frame at that boundary.`,
+            fixHint:
+              'Shave roughly one frame (~1/fps seconds) off the earlier clip\'s data-duration, or add an explicit hard-kill (tl.set(..., { visibility: "hidden" }, ...)) on the earlier clip at its exit, so only one clip is visible at the boundary instant.',
           });
         }
       }

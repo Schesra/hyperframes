@@ -373,7 +373,7 @@ describe("composition rules", () => {
       expect(finding).toBeUndefined();
     });
 
-    it("does not flag sequential clips on the same track", async () => {
+    it("does not flag (error) sequential clips on the same track, but warns on the touching boundary", async () => {
       const html = `
 <html><body>
   <div data-composition-id="c1" data-width="1920" data-height="1080">
@@ -386,11 +386,15 @@ describe("composition rules", () => {
   </script>
 </body></html>`;
       const result = await lintHyperframeHtml(html);
-      const finding = result.findings.find((f) => f.code === "overlapping_clips_same_track");
-      expect(finding).toBeUndefined();
+      expect(
+        result.findings.find((f) => f.code === "overlapping_clips_same_track"),
+      ).toBeUndefined();
+      const warning = result.findings.find((f) => f.code === "adjacent_clips_touch_exact_boundary");
+      expect(warning).toBeDefined();
+      expect(warning?.severity).toBe("warning");
     });
 
-    it("does not flag adjacencies where parseFloat + add drifts by a few ulps", async () => {
+    it("does not flag (error) adjacencies where parseFloat + add drifts by a few ulps, but warns on the touching boundary", async () => {
       // parseFloat("0.1") + parseFloat("0.2") = 0.30000000000000004
       const html = `
 <html><body>
@@ -404,8 +408,50 @@ describe("composition rules", () => {
   </script>
 </body></html>`;
       const result = await lintHyperframeHtml(html);
-      const finding = result.findings.find((f) => f.code === "overlapping_clips_same_track");
-      expect(finding).toBeUndefined();
+      expect(
+        result.findings.find((f) => f.code === "overlapping_clips_same_track"),
+      ).toBeUndefined();
+      expect(
+        result.findings.find((f) => f.code === "adjacent_clips_touch_exact_boundary"),
+      ).toBeDefined();
+    });
+  });
+
+  describe("adjacent_clips_touch_exact_boundary", () => {
+    it("does not fire when there is a real gap between clips", async () => {
+      const html = `
+<html><body>
+  <div data-composition-id="c1" data-width="1920" data-height="1080">
+    <div class="clip" data-start="0" data-duration="2" data-track-index="0">A</div>
+    <div class="clip" data-start="2.5" data-duration="2" data-track-index="0">B</div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    window.__timelines["c1"] = gsap.timeline({ paused: true });
+  </script>
+</body></html>`;
+      const result = await lintHyperframeHtml(html);
+      expect(
+        result.findings.find((f) => f.code === "adjacent_clips_touch_exact_boundary"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire when clips genuinely overlap (that's overlapping_clips_same_track's job)", async () => {
+      const html = `
+<html><body>
+  <div data-composition-id="c1" data-width="1920" data-height="1080">
+    <div class="clip" data-start="0" data-duration="3" data-track-index="0">A</div>
+    <div class="clip" data-start="2" data-duration="3" data-track-index="0">B</div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    window.__timelines["c1"] = gsap.timeline({ paused: true });
+  </script>
+</body></html>`;
+      const result = await lintHyperframeHtml(html);
+      expect(
+        result.findings.find((f) => f.code === "adjacent_clips_touch_exact_boundary"),
+      ).toBeUndefined();
     });
   });
 
