@@ -11,15 +11,14 @@ The media OS for HyperFrames: resolve · generate · operate · remember — eve
 
 HyperFrames owns media _playback_; media-use owns everything else. Each row is enforced by `scripts/lib/coverage.test.mjs` so the claim can't rot.
 
-| HyperFrames gap                            | media-use owns it via                                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Audio-only — no image/icon                 | `resolve --type image\|icon` (heygen asset search)                                          |
-| No voice / audio generation                | `resolve --type voice` + the audio engine (`audio/scripts/audio.mjs`)                       |
-| Scattered/duplicated audio engine          | one consolidated engine under `audio/` (hyperframes-media retired)                          |
-| No agent media-ops (cut/reframe/transform) | `references/operations.md` + `resolve --from` to register outputs                           |
-| No cross-project memory                    | global content-addressed cache + auto-promote (`~/.media`)                                  |
+| HyperFrames gap                            | media-use owns it via                                                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audio-only — no image/icon                 | `resolve --type image\|icon` (heygen asset search)                                                                                          |
+| No voice / audio generation                | `resolve --type voice` + the audio engine (`audio/scripts/audio.mjs`)                                                                       |
+| Scattered/duplicated audio engine          | one consolidated engine under `audio/` (hyperframes-media retired)                                                                          |
+| No agent media-ops (cut/reframe/transform) | `references/operations.md` + `resolve --from` to register outputs                                                                           |
+| No cross-project memory                    | global content-addressed cache + auto-promote (`~/.media`)                                                                                  |
 | Weak local-model defaults                  | free-usage HeyGen first (TTS, bg-removal) via the `heygen` CLI; local open-source only as an opt-out fallback (`scripts/lib/local-run.mjs`) |
-| No paid generation fallback                | fal + ElevenLabs, cost-guarded (`--allow-paid` / `--local-only`)                            |
 
 ## When to use
 
@@ -41,7 +40,7 @@ Returns one line: `resolved <id> → <path> (<type>, <metadata>)`
 | `sfx`   | Sound effects       | Bundled 19-file library + HeyGen catalog |
 | `image` | Photos, backgrounds | HeyGen asset search (75k+ vectors)       |
 | `icon`  | Icons, logos        | HeyGen asset search (type=icon)          |
-| `voice` | TTS voiceover       | HeyGen TTS (free), ElevenLabs (paid)     |
+| `voice` | TTS voiceover       | HeyGen TTS (free)                        |
 
 ### Examples
 
@@ -72,34 +71,21 @@ node <SKILL_DIR>/scripts/resolve.mjs --type icon --intent "rocket" --project .
 | `--entity, -e`  | Entity name for cache matching (optional)                 |
 | `--project, -p` | Project directory (default: .)                            |
 | `--from`        | Freeze a local file or direct public URL (ingest)         |
-| `--allow-paid`  | Let paid generators run (fal / ElevenLabs); agent's call  |
 | `--local-only`  | Offline: skip every network provider (cache + local only) |
 | `--adopt`       | Bulk-import existing assets/ into manifest                |
 | `--json`        | Output JSON instead of one-line result                    |
 
 ## Providers
 
-heygen-CLI is tried first (free catalog) for every type it serves. When the
-catalog misses, the agent may run paid generation with `--allow-paid` — the
-agent decides at its own discretion; there is no user-confirmation prompt
-(free-first still means cache + heygen are always tried before anything paid):
+The `heygen` CLI is the only external CLI media-use shells (media-use holds no
+keys; the CLI owns auth). It is tried first — and is currently the only
+provider — for every type it serves:
 
-| Type          | Free (first)        | Paid generation (`--allow-paid`)   |
-| ------------- | ------------------- | ---------------------------------- |
-| bgm/sfx/image | heygen catalog      | **fal** (Flux / MiniMax / MMAudio) |
-| voice         | **heygen tts**      | **ElevenLabs**                     |
-| icon          | heygen asset search | Iconify (gated, not yet enabled)   |
-
-Voice resolves for free by default via HeyGen TTS (the catalog credential);
-ElevenLabs is the paid fallback. Paid providers shell their own CLI (media-use
-holds no keys) and are never called without `--allow-paid`:
-
-- **fal** → the `genmedia` CLI (`curl https://genmedia.sh/install -fsS | bash`;
-  `genmedia setup --api-key "$FAL_KEY"`). Not the `fal` pip package — that is the
-  serverless-deploy CLI and can't run hosted models.
-- **ElevenLabs** → the community `elevenlabs-cli` (`npm i -g elevenlabs-cli`;
-  `export ELEVENLABS_API_KEY=…`). The official `@elevenlabs/cli` is agents-only
-  with no TTS command.
+| Type          | Provider                                          |
+| ------------- | ------------------------------------------------- |
+| bgm/sfx/image | heygen catalog (free)                             |
+| voice         | **heygen tts** (free, same credential)            |
+| icon          | heygen asset search; Iconify (gated, not enabled) |
 
 `--local-only` skips every network provider — including the free HeyGen ones —
 leaving the project + global cache and any local provider.

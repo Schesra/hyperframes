@@ -18,7 +18,6 @@ const { values: args } = parseArgs({
     project: { type: "string", short: "p", default: "." },
     adopt: { type: "boolean", default: false },
     from: { type: "string" },
-    "allow-paid": { type: "boolean", default: false },
     "local-only": { type: "boolean", default: false },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -142,12 +141,10 @@ async function run() {
     }
   }
 
-  // Cost guard: paid generators run only with --allow-paid. Offline guard:
-  // --local-only skips every remote provider (HeyGen catalog + all paid), leaving
-  // the project + global cache and any local provider.
+  // Offline guard: --local-only skips every remote provider (HeyGen catalog),
+  // leaving the project + global cache and any local provider.
   const localOnly = args["local-only"];
-  const allowPaid = args["allow-paid"] && !localOnly;
-  const ctx = { entity, projectDir, allowPaid, localOnly };
+  const ctx = { entity, projectDir, localOnly };
 
   // 3. provider search — registry tries providers in order (heygen-CLI first)
   let searchResult = null;

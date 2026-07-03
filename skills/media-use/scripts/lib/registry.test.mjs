@@ -39,29 +39,19 @@ test("still-gated providers carry a gate reason", () => {
   );
 });
 
-test("fal is now an approved, enabled, paid provider after heygen (Bin: B-Q2)", () => {
-  const ps = getProviders("bgm");
-  assert.match(ps[0].name, /^heygen/, "heygen stays first (free)");
-  const fal = ps.find((p) => p.name === "fal");
-  assert.ok(fal, "fal is live");
-  assert.equal(fal.enabled, true);
-  assert.equal(fal.paid, true);
-  assert.equal(typeof fal.generate, "function");
+test("heygen is the only external CLI: no fal / elevenlabs providers remain", () => {
+  for (const t of listTypes()) {
+    const names = getProviders(t, { includeDisabled: true }).map((p) => p.name);
+    assert.ok(!names.includes("fal"), `${t} still lists fal`);
+    assert.ok(!names.includes("elevenlabs"), `${t} still lists elevenlabs`);
+  }
 });
 
-test("voice: HeyGen TTS is free + first, ElevenLabs is the paid fallback (Bin: B-Q1)", () => {
+test("voice: free HeyGen TTS is the sole provider", () => {
   const ps = getProviders("voice");
   assert.equal(ps[0].name, "heygen.tts", "free HeyGen TTS comes first");
   assert.equal(ps[0].paid ?? false, false, "HeyGen TTS is free (same credential as catalog)");
   assert.equal(typeof ps[0].generate, "function");
-  const eleven = ps.find((p) => p.name === "elevenlabs");
-  assert.ok(eleven && eleven.paid, "ElevenLabs is the paid fallback");
-});
-
-test("voice resolves by default (no --allow-paid) via free HeyGen TTS", async () => {
-  // The regression M2 guarded against: voice must not be paid-only.
-  const free = getProviders("voice").filter((p) => !p.paid);
-  assert.ok(free.length > 0, "at least one free voice provider so resolve works by default");
 });
 
 test("getProvider returns the first provider with its type, throws for unknown", () => {
@@ -126,38 +116,6 @@ test("runProviders returns null when no provider yields a result", async () => {
 
 test("runCapability('bgm','process') is null — process slot is graceful when unfilled", async () => {
   assert.equal(await runCapability("bgm", "process", "x", {}), null);
-});
-
-// --- cost guard: paid providers are opt-in per call (free-first) -------------
-
-test("runProviders skips paid providers unless ctx.allowPaid", async () => {
-  let paidRan = false;
-  const providers = [
-    { name: "free", search: async () => null },
-    {
-      name: "paid",
-      paid: true,
-      search: async () => {
-        paidRan = true;
-        return { hit: "paid" };
-      },
-    },
-  ];
-  assert.equal(await runProviders(providers, "search", "x", {}), null, "paid skipped by default");
-  assert.equal(paidRan, false);
-  assert.deepEqual(await runProviders(providers, "search", "x", { allowPaid: true }), {
-    hit: "paid",
-  });
-});
-
-test("a free provider still wins over a paid one even when paid is allowed", async () => {
-  const providers = [
-    { name: "free", search: async () => ({ hit: "free" }) },
-    { name: "paid", paid: true, search: async () => ({ hit: "paid" }) },
-  ];
-  assert.deepEqual(await runProviders(providers, "search", "x", { allowPaid: true }), {
-    hit: "free",
-  });
 });
 
 test("--local-only skips every network provider (even free remote ones)", async () => {
