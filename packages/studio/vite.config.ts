@@ -22,6 +22,23 @@ async function loadRuntimeSourceForDev(
 }
 
 const studioPkg = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf-8"));
+const STUDIO_SERVER_SOURCE_MUTATION_ID = "@hyperframes/studio-server/source-mutation";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getStudioServerSourceMutationPath(): string | null {
+  const packageJsonPath = resolve(__dirname, "../studio-server/package.json");
+  const packageJson: unknown = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+  if (!isRecord(packageJson)) return null;
+  const exportsMap = packageJson.exports;
+  if (!isRecord(exportsMap)) return null;
+  const sourceMutationExport = exportsMap["./source-mutation"];
+  if (!isRecord(sourceMutationExport)) return null;
+  const bunTarget = sourceMutationExport.bun;
+  return typeof bunTarget === "string" ? resolve(__dirname, "../studio-server", bunTarget) : null;
+}
 
 // ── Bridge Hono fetch → Node http response ───────────────────────────────────
 
@@ -166,8 +183,19 @@ function devProjectApi(): Plugin {
   };
 }
 
+function studioServerSourceMutationExport(): Plugin {
+  return {
+    name: "studio-server-source-mutation-export",
+    enforce: "pre",
+    resolveId(source): string | null {
+      if (source !== STUDIO_SERVER_SOURCE_MUTATION_ID) return null;
+      return getStudioServerSourceMutationPath();
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), devProjectApi()],
+  plugins: [studioServerSourceMutationExport(), react(), devProjectApi()],
   define: {
     __STUDIO_VERSION__: JSON.stringify(studioPkg.version),
   },

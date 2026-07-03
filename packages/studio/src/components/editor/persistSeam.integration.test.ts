@@ -1,0 +1,234 @@
+// @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  patchElementInHtml,
+  type PatchOperation,
+  type SourceMutationTarget,
+} from "@hyperframes/studio-server/source-mutation";
+import { describe, expect, it } from "vitest";
+import {
+  buildDomEditPatchTarget,
+  buildDomEditStylePatchOperation,
+  buildDomEditTextPatchOperation,
+  serializeDomEditTextFields,
+} from "./domEditingLayers";
+import { buildPathOffsetPatches } from "./manualEditsDomPatches";
+import { STUDIO_OFFSET_X_PROP, STUDIO_PATH_OFFSET_ATTR } from "./manualEditsTypes";
+import type { DomEditTextField } from "./domEditingTypes";
+import { makeSelection } from "../../hooks/domSelectionTestHarness";
+
+const testDir = dirname(fileURLToPath(import.meta.url));
+const fixtureDir = join(testDir, "../../../tests/e2e/fixtures/design-panel-qa");
+
+function readFixture(relativePath: string): string {
+  return readFileSync(join(fixtureDir, relativePath), "utf-8");
+}
+
+function createSelection(input: {
+  id: string;
+  hfId: string;
+  tagName: string;
+}): ReturnType<typeof makeSelection> {
+  const element = document.createElement(input.tagName);
+  element.id = input.id;
+  element.setAttribute("data-hf-id", input.hfId);
+  return {
+    ...makeSelection(input.id, element),
+    hfId: input.hfId,
+  };
+}
+
+function clientTarget(input: { id: string; hfId: string; tagName: string }): SourceMutationTarget {
+  return buildDomEditPatchTarget(createSelection(input));
+}
+
+function patchAndExpectChange(
+  sourceHtml: string,
+  target: SourceMutationTarget,
+  operations: PatchOperation[],
+): string {
+  const result = patchElementInHtml(sourceHtml, target, operations);
+  expect(result.matched).toBe(true);
+  expect(result.html).not.toBe(sourceHtml);
+  return result.html;
+}
+
+function parseHtml(html: string): Document {
+  return new DOMParser().parseFromString(html, "text/html");
+}
+
+function findElementInHtml(html: string, selector: string): Element {
+  const document = parseHtml(html);
+  const directMatch = document.querySelector(selector);
+  if (directMatch) return directMatch;
+
+  for (const template of Array.from(document.querySelectorAll("template"))) {
+    const templateMatch = template.content.querySelector(selector);
+    if (templateMatch) return templateMatch;
+  }
+
+  throw new Error(`Expected selector ${selector} to match`);
+}
+
+function findByHfId(html: string, hfId: string): Element {
+  return findElementInHtml(html, `[data-hf-id="${hfId}"]`);
+}
+
+function countOccurrences(value: string, needle: string): number {
+  return value.split(needle).length - 1;
+}
+
+describe("persist seam source mutation", () => {
+  const indexHtml = readFixture("index.html");
+  const subHtml = readFixture("compositions/qa-sub.html");
+
+  it("persists qa-headline text font-size style operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-headline", hfId: "qa-headline", tagName: "h1" }),
+      [buildDomEditStylePatchOperation("font-size", "64px")],
+    );
+
+    expect(findByHfId(html, "qa-headline").getAttribute("style")).toContain("font-size: 64px");
+  });
+
+  it("persists qa-shape fill style operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-shape", hfId: "qa-shape", tagName: "div" }),
+      [buildDomEditStylePatchOperation("background-color", "#ff0000")],
+    );
+
+    expect(findByHfId(html, "qa-shape").getAttribute("style")).toContain(
+      "background-color: #ff0000",
+    );
+  });
+
+  it("persists qa-multi text color style operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-multi", hfId: "qa-multi", tagName: "div" }),
+      [buildDomEditStylePatchOperation("color", "#00ff00")],
+    );
+
+    expect(findByHfId(html, "qa-multi").getAttribute("style")).toContain("color: #00ff00");
+  });
+
+  it("persists qa-image opacity style operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-image", hfId: "qa-image", tagName: "img" }),
+      [buildDomEditStylePatchOperation("opacity", "0.4")],
+    );
+
+    expect(findByHfId(html, "qa-image").getAttribute("style")).toContain("opacity: 0.4");
+  });
+
+  it("persists detached jsdom path offset operations", () => {
+    const element = document.createElement("div");
+    element.style.setProperty(STUDIO_OFFSET_X_PROP, "24px");
+
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-shape", hfId: "qa-shape", tagName: "div" }),
+      buildPathOffsetPatches(element),
+    );
+    const shape = findByHfId(html, "qa-shape");
+
+    expect(shape.getAttribute("style")).toContain(`${STUDIO_OFFSET_X_PROP}: 24px`);
+    expect(shape.getAttribute("style")).toContain("translate: var(--hf-studio-offset-x, 0px)");
+    expect(shape.getAttribute(STUDIO_PATH_OFFSET_ATTR)).toBe("true");
+  });
+
+  it("persists timeline data-start attribute operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-zone-headline", hfId: "qa-zone-headline", tagName: "div" }),
+      [{ type: "attribute", property: "start", value: "2.5" }],
+    );
+
+    expect(findByHfId(html, "qa-zone-headline").getAttribute("data-start")).toBe("2.5");
+    expect(countOccurrences(html, 'data-start="2.5"')).toBe(1);
+  });
+
+  it("persists media volume data attribute operation", () => {
+    const html = patchAndExpectChange(
+      indexHtml,
+      clientTarget({ id: "qa-video", hfId: "qa-video", tagName: "video" }),
+      [{ type: "attribute", property: "volume", value: "0.75" }],
+    );
+
+    expect(findByHfId(html, "qa-video").getAttribute("data-volume")).toBe("0.75");
+    expect(html).not.toContain('data-volume="0.5"');
+  });
+
+  it("returns matched false and unchanged html for a missing hfId target", () => {
+    const result = patchElementInHtml(indexHtml, { hfId: "qa-does-not-exist" }, [
+      buildDomEditStylePatchOperation("font-size", "64px"),
+    ]);
+
+    expect(result.matched).toBe(false);
+    expect(result.html).toBe(indexHtml);
+  });
+
+  it("persists sub-composition child style operation inside a template", () => {
+    const html = patchAndExpectChange(
+      subHtml,
+      clientTarget({ id: "qa-sub-title", hfId: "qa-sub-title", tagName: "h2" }),
+      [buildDomEditStylePatchOperation("font-size", "50px")],
+    );
+
+    expect(findByHfId(html, "qa-sub-title").getAttribute("style")).toContain("font-size: 50px");
+  });
+
+  it("returns matched false for runtime-generated caption words absent from static source", () => {
+    const result = patchElementInHtml(
+      indexHtml,
+      { selector: "#qa-caption-host span", selectorIndex: 0 },
+      [buildDomEditStylePatchOperation("color", "#ffffff")],
+    );
+
+    expect(result.matched).toBe(false);
+    expect(result.html).toBe(indexHtml);
+  });
+
+  it("documents U4 bug: child text-field style persists as escaped markup", () => {
+    const fields: DomEditTextField[] = [
+      {
+        key: "qa-line-a",
+        label: "Text 1",
+        value: "First styled line",
+        tagName: "span",
+        attributes: [
+          { name: "class", value: "qa-line-a" },
+          { name: "data-hf-text-key", value: "qa-line-a" },
+        ],
+        inlineStyles: { color: "#0000ff" },
+        computedStyles: {},
+        source: "child",
+      },
+      {
+        key: "qa-line-b",
+        label: "Text 2",
+        value: "Second styled line",
+        tagName: "span",
+        attributes: [
+          { name: "class", value: "qa-line-b" },
+          { name: "data-hf-text-key", value: "qa-line-b" },
+        ],
+        inlineStyles: {},
+        computedStyles: {},
+        source: "child",
+      },
+    ];
+    const serialized = serializeDomEditTextFields(fields);
+    const html = patchAndExpectChange(indexHtml, { hfId: "qa-multi" }, [
+      buildDomEditTextPatchOperation(serialized),
+    ]);
+
+    expect(html).toContain("&lt;span");
+    expect(findByHfId(html, "qa-multi").textContent).toContain("<span");
+  });
+});
