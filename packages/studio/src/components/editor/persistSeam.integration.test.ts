@@ -9,6 +9,7 @@ import {
 } from "@hyperframes/studio-server/source-mutation";
 import { describe, expect, it } from "vitest";
 import {
+  collectDomEditTextFields,
   buildDomEditPatchTarget,
   buildDomEditStylePatchOperation,
   buildDomEditTextPatchOperation,
@@ -16,6 +17,7 @@ import {
 import { buildPathOffsetPatches } from "./manualEditsDomPatches";
 import { STUDIO_OFFSET_X_PROP, STUDIO_PATH_OFFSET_ATTR } from "./manualEditsTypes";
 import { makeSelection } from "../../hooks/domSelectionTestHarness";
+import { buildTextFieldChildOperations } from "../../hooks/domEditTextFieldCommitOps";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const fixtureDir = join(testDir, "../../../tests/e2e/fixtures/design-panel-qa");
@@ -235,5 +237,28 @@ describe("persist seam source mutation", () => {
     expect(findElementInHtml(html, ".qa-line-a").textContent).toBe(value);
     expect(findElementInHtml(html, ".qa-line-b").textContent).toBe("Second styled line");
     expect(html).not.toContain("&lt;span");
+  });
+
+  it("uses same-tag source child indexes when a non-leaf sibling sits between fields", () => {
+    const source = `<div data-hf-id="mixed"><span class="leaf-a">First</span><span class="wrapper"><b>Wrapper</b></span><span class="leaf-b">Second</span></div>`;
+    const previewHost = document.createElement("div");
+    previewHost.innerHTML = source;
+    const previewTarget = previewHost.querySelector('[data-hf-id="mixed"]');
+    if (!(previewTarget instanceof HTMLElement)) throw new Error("Expected preview target");
+
+    const originalFields = collectDomEditTextFields(previewTarget);
+    const secondField = originalFields.find((field) => field.value === "Second");
+    if (!secondField) throw new Error("Expected second text field");
+    const nextFields = originalFields.map((field) =>
+      field.key === secondField.key ? { ...field, value: "Second updated" } : field,
+    );
+    const operations = buildTextFieldChildOperations(originalFields, nextFields);
+    if (!operations) throw new Error("Expected child operations");
+
+    const html = patchAndExpectChange(source, { hfId: "mixed" }, operations);
+
+    expect(findElementInHtml(html, ".leaf-a").textContent).toBe("First");
+    expect(findElementInHtml(html, ".wrapper").textContent).toBe("Wrapper");
+    expect(findElementInHtml(html, ".leaf-b").textContent).toBe("Second updated");
   });
 });

@@ -173,7 +173,9 @@ export function useDomEditCommits({
       if (unsafeFields.length > 0) {
         const fields = formatUnsafeFieldList(unsafeFields);
         showToast("Couldn't save edit because it contains invalid layout values", "error");
-        throw new DomEditPersistUnsafeValueError(`DOM patch contains unsafe values: ${fields}`);
+        throw new DomEditPersistUnsafeValueError(`DOM patch contains unsafe values: ${fields}`, {
+          alreadyToasted: true,
+        });
       }
 
       // Skip the SDK path when prepareContent is set (e.g. @font-face injection

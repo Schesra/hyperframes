@@ -32,6 +32,10 @@ interface HarnessArgs {
     clientY: number,
     options?: { activeGroupElement?: HTMLElement | null },
   ) => Promise<DomEditSelection | null>;
+  resolveAllDomSelectionsFromPreviewPoint?: (
+    clientX: number,
+    clientY: number,
+  ) => Promise<DomEditSelection[]>;
   applyDomSelection: (
     selection: DomEditSelection | null,
     options?: { revealPanel?: boolean; additive?: boolean; preserveGroup?: boolean },
@@ -59,7 +63,8 @@ function renderHarness(args: HarnessArgs): {
       showToast: vi.fn(),
       applyDomSelection: args.applyDomSelection,
       resolveDomSelectionFromPreviewPoint: args.resolveDomSelectionFromPreviewPoint,
-      resolveAllDomSelectionsFromPreviewPoint: vi.fn(async () => []),
+      resolveAllDomSelectionsFromPreviewPoint:
+        args.resolveAllDomSelectionsFromPreviewPoint ?? vi.fn(async () => []),
       updateDomEditHoverSelection: vi.fn(),
       setActiveGroupElement: args.setActiveGroupElement ?? vi.fn(),
     });
@@ -187,6 +192,34 @@ describe("usePreviewInteraction", () => {
 
     expect(setActiveGroupElement).toHaveBeenCalledWith(group);
     expect(applyDomSelection).toHaveBeenCalledWith(childSelection);
+    cleanup();
+  });
+
+  it("cycles stacked candidates on a rapid second click at the same spot", async () => {
+    const topElement = document.createElement("div");
+    topElement.id = "top";
+    const bottomElement = document.createElement("div");
+    bottomElement.id = "bottom";
+    const topSelection = makeSelection("Top", topElement);
+    const bottomSelection = makeSelection("Bottom", bottomElement);
+    const applyDomSelection = vi.fn();
+    const resolveDomSelectionFromPreviewPoint = vi.fn(async () => topSelection);
+    const resolveAllDomSelectionsFromPreviewPoint = vi.fn(async () => [
+      topSelection,
+      bottomSelection,
+    ]);
+    const { canvas, cleanup } = renderHarness({
+      previewIframe: null,
+      resolveDomSelectionFromPreviewPoint,
+      resolveAllDomSelectionsFromPreviewPoint,
+      applyDomSelection,
+    });
+
+    await dispatchMouseDown(canvas, { detail: 1 });
+    await dispatchMouseDown(canvas, { detail: 2 });
+
+    expect(applyDomSelection).toHaveBeenNthCalledWith(1, topSelection);
+    expect(applyDomSelection).toHaveBeenNthCalledWith(2, bottomSelection);
     cleanup();
   });
 });

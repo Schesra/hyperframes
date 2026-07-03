@@ -186,7 +186,7 @@ describe("patchElementInHtml", () => {
       },
     ]);
 
-    expect(result.matched).toBe(true);
+    expect(result.matched).toBe(false);
     expect(result.html).toBe(source);
   });
 

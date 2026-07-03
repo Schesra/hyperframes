@@ -1,6 +1,5 @@
 import type { DomEditSelection } from "../components/editor/domEditing";
 import type { PatchOperation } from "../utils/sourcePatcher";
-import { StudioSaveHttpError } from "../utils/studioSaveDiagnostics";
 
 export class DomEditPersistUnresolvableError extends Error {
   constructor(targetPath: string) {
@@ -10,9 +9,19 @@ export class DomEditPersistUnresolvableError extends Error {
 }
 
 export class DomEditPersistUnsafeValueError extends Error {
-  constructor(message: string) {
+  readonly alreadyToasted: boolean;
+
+  constructor(message: string, options: { alreadyToasted?: boolean } = {}) {
     super(message);
     this.name = "DomEditPersistUnsafeValueError";
+    this.alreadyToasted = options.alreadyToasted ?? false;
+  }
+}
+
+export class DomEditPersistUnsupportedTextStructureError extends Error {
+  constructor() {
+    super("Couldn't save this text structure change");
+    this.name = "DomEditPersistUnsupportedTextStructureError";
   }
 }
 
@@ -56,7 +65,7 @@ export function reportDomEditPersistFailure(
     error: detail,
   });
 
-  if (error instanceof StudioSaveHttpError || error instanceof DomEditPersistUnsafeValueError) {
+  if (error instanceof DomEditPersistUnsafeValueError && error.alreadyToasted) {
     return;
   }
 

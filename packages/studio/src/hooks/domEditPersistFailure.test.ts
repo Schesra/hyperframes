@@ -44,7 +44,7 @@ describe("reportDomEditPersistFailure", () => {
     warnSpy.mockRestore();
   });
 
-  it("does not toast for errors already toasted at the throw site", () => {
+  it("toasts StudioSaveHttpError and unmarked unsafe errors", () => {
     const showToast = vi.fn<(message: string, tone?: "error" | "info") => void>();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -61,8 +61,32 @@ describe("reportDomEditPersistFailure", () => {
       showToast,
     );
 
-    expect(showToast).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledTimes(2);
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to patch index.html"),
+      "error",
+    );
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining("DOM patch contains unsafe values: style.width"),
+      "error",
+    );
     expect(warnSpy).toHaveBeenCalledTimes(2);
+
+    warnSpy.mockRestore();
+  });
+
+  it("does not toast errors explicitly marked as already toasted", () => {
+    const showToast = vi.fn<(message: string, tone?: "error" | "info") => void>();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = new DomEditPersistUnsafeValueError(
+      "DOM patch contains unsafe values: style.width",
+    );
+    Object.defineProperty(error, "alreadyToasted", { value: true });
+
+    reportDomEditPersistFailure(selection, operations, error, showToast);
+
+    expect(showToast).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
       "[Studio] DOM edit persist failed",
       expect.objectContaining({

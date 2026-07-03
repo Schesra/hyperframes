@@ -166,7 +166,7 @@ export function patchElementInHtml(
   const resolved: ResolvedPatchOperation[] = [];
   for (const op of operations) {
     const opTarget = resolveOperationTarget(htmlEl, op);
-    if (!opTarget) return { html: source, matched: true };
+    if (!opTarget) return { html: source, matched: false };
     resolved.push({ op, target: opTarget });
   }
 

@@ -1,7 +1,3 @@
-/**
- * Layer items, text fields, capabilities, selection resolution, and patch operations
- * for dom editing.
- */
 import type { PatchOperation } from "../../utils/sourcePatcher";
 import {
   resolveEditingAffordances,
@@ -36,10 +32,18 @@ import {
 } from "./domEditingElement";
 import { isCompositionRootLayer } from "./domEditingRootLayer";
 
-// ─── Text fields ────────────────────────────────────────────────────────────
-
 export function isEditableTextLeaf(el: HTMLElement): boolean {
   return isTextBearingTag(el.tagName.toLowerCase()) && el.children.length === 0;
+}
+
+function sameTagChildIndex(el: HTMLElement): number {
+  let index = 0;
+  let sibling = el.previousElementSibling;
+  while (sibling) {
+    if (sibling.tagName === el.tagName) index += 1;
+    sibling = sibling.previousElementSibling;
+  }
+  return index;
 }
 
 function getTextFieldLabel(
@@ -57,6 +61,7 @@ function buildTextField(
   index: number,
   total: number,
   source: "self" | "child",
+  sourceChildIndex?: number,
 ): DomEditTextField {
   const tagName = el.tagName.toLowerCase();
   const key = el.getAttribute("data-hf-text-key") ?? `${source}:${index}:${tagName}`;
@@ -74,6 +79,7 @@ function buildTextField(
     inlineStyles: getInlineStyles(el),
     computedStyles: getCuratedComputedStyles(el),
     source,
+    ...(sourceChildIndex == null ? {} : { sourceChildIndex }),
   };
 }
 
@@ -105,7 +111,9 @@ export function collectDomEditTextFields(el: HTMLElement): DomEditTextField[] {
           });
           childIdx++;
         } else if (isHtmlElement(node) && isEditableTextLeaf(node)) {
-          fields.push(buildTextField(node, childIdx, childElements.length, "child"));
+          fields.push(
+            buildTextField(node, childIdx, childElements.length, "child", sameTagChildIndex(node)),
+          );
           childIdx++;
         }
       }
@@ -113,7 +121,7 @@ export function collectDomEditTextFields(el: HTMLElement): DomEditTextField[] {
     }
 
     return childElements.map((child, index) =>
-      buildTextField(child, index, childElements.length, "child"),
+      buildTextField(child, index, childElements.length, "child", sameTagChildIndex(child)),
     );
   }
 
@@ -185,10 +193,11 @@ export function buildTextFieldChildLocator(
   const field = fields[fieldIndex];
   if (!field || field.source !== "child") return null;
 
-  let childIndex = 0;
-  for (const priorField of fields.slice(0, fieldIndex)) {
-    if (priorField.source === "child" && priorField.tagName === field.tagName) {
-      childIndex += 1;
+  let childIndex = field.sourceChildIndex;
+  if (childIndex == null) {
+    childIndex = 0;
+    for (const priorField of fields.slice(0, fieldIndex)) {
+      if (priorField.source === "child" && priorField.tagName === field.tagName) childIndex += 1;
     }
   }
 
@@ -198,14 +207,6 @@ export function buildTextFieldChildLocator(
   };
 }
 
-// ─── Capabilities ────────────────────────────────────────────────────────────
-
-/**
- * Build the geometry/capability half of EditableElementFacts. Section inputs
- * (text/timing/animation) are irrelevant to capability resolution, so they are
- * zeroed here. Shared by the wrapper and the live-selection path so the two
- * fact-construction sites can't disagree.
- */
 function capabilityFacts(geometry: {
   hasStableTarget: boolean;
   tag: string;
