@@ -71,9 +71,19 @@ export function useCropOverlay(params: {
   // Outside crop mode the selection box hugs the visible (cropped) region so
   // the overlay matches what's actually on screen; crop mode shows the full
   // element bounds (the crop frame is drawn by DomEditCropHandles).
+  // Spread keeps the full OverlayRect shape (editScaleX/Y) so the hugged rect
+  // can be handed to the gesture machinery as the box geometry.
   const visualRect =
     overlayRect && cropInsets && hasCropInsets && !cropMode
-      ? cropRectFromInsets(overlayRect, cropInsets, overlayRect.editScaleX, overlayRect.editScaleY)
+      ? {
+          ...overlayRect,
+          ...cropRectFromInsets(
+            overlayRect,
+            cropInsets,
+            overlayRect.editScaleX,
+            overlayRect.editScaleY,
+          ),
+        }
       : overlayRect;
 
   return { hasCropInsets, visualRect };

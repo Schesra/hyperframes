@@ -475,7 +475,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
                 aria-label="Rotate selection"
                 onPointerDown={(e) => {
                   e.stopPropagation();
-                  gestures.startGesture("rotate", e);
+                  gestures.startGesture("rotate", e, { rect: visualRect });
                 }}
               />
             </div>
@@ -514,7 +514,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
                 return;
               }
               if (selection.capabilities.canApplyManualOffset) {
-                gestures.startGesture("drag", e);
+                gestures.startGesture("drag", e, { rect: visualRect });
                 return;
               }
               e.preventDefault();
@@ -536,7 +536,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
                 style={{ cursor: "se-resize", touchAction: "none" }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
-                  gestures.startGesture("resize", e);
+                  gestures.startGesture("resize", e, { rect: visualRect });
                 }}
               />
             )}
