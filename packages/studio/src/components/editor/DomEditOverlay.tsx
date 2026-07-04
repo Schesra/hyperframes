@@ -21,8 +21,9 @@ import { SnapGuideOverlay, type SnapGuidesState } from "./SnapGuideOverlay";
 import { GridOverlay } from "./GridOverlay";
 import type { GestureRecordingState } from "./GestureRecordControl";
 import { DomEditCropHandles } from "./DomEditCropHandles";
+import { DomEditRotateHandle } from "./DomEditRotateHandle";
 import { useCropOverlay } from "../../hooks/useCropMode";
-import { readDomEditSelectionShapeStyles } from "./domEditOverlayShape";
+import { readDomEditSelectionShapeStyles, resolveBoxChromeClass } from "./domEditOverlayShape";
 import { useDomEditCompositionRect } from "./useDomEditCompositionRect";
 
 // Re-exports for external consumers — preserving existing import paths.
@@ -172,15 +173,16 @@ export const DomEditOverlay = memo(function DomEditOverlay({
 
   const compRect = useDomEditCompositionRect({ iframeRef, overlayRef });
 
-  const { hasCropInsets, cropBoxClipPath, cropHandleOffsetPx } = useCropOverlay({
+  const { hasCropInsets, cropOutlineInsetPx } = useCropOverlay({
     selection,
     groupCount: groupSelections.length,
     cropMode,
     onCropModeChange,
     overlayRect,
   });
-  // Inset crops use the overlay-scaled clip; other clip shapes keep the raw mirror.
-  const boxClipPath = hasCropInsets ? cropBoxClipPath : selectionShapeStyles.clipPath;
+  // Inset crops draw their own outline child; other clip shapes keep the raw mirror.
+  const boxClipPath = hasCropInsets ? undefined : selectionShapeStyles.clipPath;
+  const boxChromeClass = resolveBoxChromeClass(Boolean(cropOutlineInsetPx), boxClipPath);
 
   // Off-canvas element indicators — dashed outlines for elements positioned
   // outside the composition bounds so users can find them.
@@ -311,8 +313,10 @@ export const DomEditOverlay = memo(function DomEditOverlay({
   const handleOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!allowCanvasMovement || event.button !== 0) return;
     if (cropMode) {
+      // Reaching here = click outside the element (crop UI swallows its own) — exit crop mode.
       event.preventDefault();
       event.stopPropagation();
+      onCropModeChange?.(false);
       return;
     }
     if (event.shiftKey) {
@@ -457,35 +461,20 @@ export const DomEditOverlay = memo(function DomEditOverlay({
       {!hasGroupSelection && selection && overlayRect && compRect.width > 0 && (
         <>
           {allowCanvasMovement && !cropMode && selection.capabilities.canApplyManualRotation && (
-            <div
-              className="pointer-events-none absolute"
-              style={{
-                left: overlayRect.left + overlayRect.width / 2,
-                top: overlayRect.top - 34,
-                width: 28,
-                height: 34,
-                transform: "translateX(-50%)",
+            <DomEditRotateHandle
+              overlayRect={overlayRect}
+              cropOutlineInsetPx={cropOutlineInsetPx}
+              onStartRotate={(e) => {
+                e.stopPropagation();
+                gestures.startGesture("rotate", e);
               }}
-            >
-              <div className="absolute left-1/2 top-3 bottom-0 w-px -translate-x-1/2 bg-studio-accent/60" />
-              <button
-                type="button"
-                className="pointer-events-auto absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 rounded-full border border-studio-accent bg-studio-accent p-0 shadow-[0_0_0_2px_rgba(60,230,172,0.18)]"
-                style={{ cursor: "grab", touchAction: "none" }}
-                title="Rotate"
-                aria-label="Rotate selection"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  gestures.startGesture("rotate", e);
-                }}
-              />
-            </div>
+            />
           )}
           <div
             key={selectionKey}
             ref={boxRef}
             data-dom-edit-selection-box="true"
-            className={`pointer-events-auto absolute rounded-md ${boxClipPath ? "shadow-[inset_0_0_0_2px_rgba(60,230,172,0.6)]" : "border border-studio-accent/80 shadow-[0_0_0_1px_rgba(60,230,172,0.25)]"} bg-studio-accent/5`}
+            className={`pointer-events-auto absolute rounded-md ${boxChromeClass}`}
             style={{
               left: overlayRect.left,
               top: overlayRect.top,
@@ -531,15 +520,26 @@ export const DomEditOverlay = memo(function DomEditOverlay({
             onMouseDown={suppressBoxMouseDown}
             onClick={handleBoxClick}
           >
+            {cropOutlineInsetPx && (
+              <div
+                className="pointer-events-none absolute rounded-md border border-studio-accent/80 shadow-[0_0_0_1px_rgba(60,230,172,0.25)] bg-studio-accent/5"
+                style={{
+                  left: cropOutlineInsetPx.left,
+                  top: cropOutlineInsetPx.top,
+                  right: cropOutlineInsetPx.right,
+                  bottom: cropOutlineInsetPx.bottom,
+                }}
+              />
+            )}
             {allowCanvasMovement && !cropMode && selection.capabilities.canApplyManualSize && (
               <div
                 className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-studio-accent border border-studio-accent/60"
                 style={{
                   cursor: "se-resize",
                   touchAction: "none",
-                  ...(cropHandleOffsetPx && {
-                    right: cropHandleOffsetPx.right - 6,
-                    bottom: cropHandleOffsetPx.bottom - 6,
+                  ...(cropOutlineInsetPx && {
+                    right: cropOutlineInsetPx.right - 6,
+                    bottom: cropOutlineInsetPx.bottom - 6,
                   }),
                 }}
                 onPointerDown={(e) => {

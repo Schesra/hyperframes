@@ -73,17 +73,21 @@ export function useCropOverlay(params: {
     (cropInsets.top > 0 || cropInsets.right > 0 || cropInsets.bottom > 0 || cropInsets.left > 0),
   );
 
+  // Scaled insets for the crop outline child + the resize-handle shift. The
+  // box div itself stays border-less at full bounds; a child draws the
+  // outline ON the crop boundary (a clip on the box would swallow the
+  // border everywhere the crop edge doesn't touch the element edge).
   const sx = overlayRect && overlayRect.editScaleX > 0 ? overlayRect.editScaleX : 1;
   const sy = overlayRect && overlayRect.editScaleY > 0 ? overlayRect.editScaleY : 1;
-  const cropBoxClipPath =
+  const cropOutlineInsetPx =
     cropInsets && hasCropInsets && !cropMode
-      ? `inset(${cropInsets.top * sy}px ${cropInsets.right * sx}px ${cropInsets.bottom * sy}px ${cropInsets.left * sx}px)`
+      ? {
+          top: cropInsets.top * sy,
+          right: cropInsets.right * sx,
+          bottom: cropInsets.bottom * sy,
+          left: cropInsets.left * sx,
+        }
       : undefined;
-  // The resize handle sits at the box's bottom-right corner, which the crop
-  // clip would swallow — shift it to the visible region's corner instead.
-  const cropHandleOffsetPx = cropBoxClipPath
-    ? { right: (cropInsets?.right ?? 0) * sx, bottom: (cropInsets?.bottom ?? 0) * sy }
-    : undefined;
 
-  return { hasCropInsets, cropBoxClipPath, cropHandleOffsetPx };
+  return { hasCropInsets, cropOutlineInsetPx };
 }
