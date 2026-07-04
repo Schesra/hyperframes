@@ -1,27 +1,20 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { DomEditSelection } from "./domEditing";
 import type { OverlayRect } from "./domEditOverlayGeometry";
-import { type CropEdge, resolveCropInsetFromEdgeDrag } from "./domEditOverlayCrop";
 import {
-  buildInsetClipPathSides,
-  parseInsetClipPathSides,
-  type ClipPathInsetSides,
-} from "./clipPathHelpers";
+  type CropEdge,
+  cropRectFromInsets,
+  readElementCropInsets,
+  resolveCropInsetFromEdgeDrag,
+} from "./domEditOverlayCrop";
+import { buildInsetClipPathSides, type ClipPathInsetSides } from "./clipPathHelpers";
 
 interface CropGestureState {
   edge: CropEdge;
-  selection: DomEditSelection;
   pointerId: number;
   startX: number;
   startY: number;
   startInsets: ClipPathInsetSides;
-  radius: number;
-  width: number;
-  height: number;
-  scaleX: number;
-  scaleY: number;
-  previousInlineClipPath: string;
-  lastValue: string;
   didMove: boolean;
 }
 
@@ -31,33 +24,10 @@ interface DomEditCropHandlesProps {
   onStyleCommit?: (property: string, value: string) => Promise<void> | void;
 }
 
-function readCurrentClipPath(selection: DomEditSelection): {
-  currentClipPath: string;
-  inlineClipPath: string;
-} {
-  const inlineValue = selection.element.style.getPropertyValue("clip-path").trim();
-  if (inlineValue) return { currentClipPath: inlineValue, inlineClipPath: inlineValue };
-  const win = selection.element.ownerDocument.defaultView;
-  const computed = win?.getComputedStyle(selection.element).clipPath.trim();
-  return {
-    currentClipPath: computed && computed !== "none" ? computed : "none",
-    inlineClipPath: "",
-  };
-}
-
-function restoreInlineClipPath(gesture: CropGestureState): void {
-  if (gesture.previousInlineClipPath) {
-    gesture.selection.element.style.setProperty("clip-path", gesture.previousInlineClipPath);
-  } else {
-    gesture.selection.element.style.removeProperty("clip-path");
-  }
-}
-
-function defaultInsets(): ClipPathInsetSides {
-  return { top: 0, right: 0, bottom: 0, left: 0 };
-}
-
-function handleCenter(edge: CropEdge, rect: OverlayRect): { left: number; top: number } {
+function handleCenter(
+  edge: CropEdge,
+  rect: { left: number; top: number; width: number; height: number },
+) {
   if (edge === "top") return { left: rect.left + rect.width / 2, top: rect.top };
   if (edge === "right") return { left: rect.left + rect.width, top: rect.top + rect.height / 2 };
   if (edge === "bottom") return { left: rect.left + rect.width / 2, top: rect.top + rect.height };
@@ -66,52 +36,85 @@ function handleCenter(edge: CropEdge, rect: OverlayRect): { left: number; top: n
 
 const EDGES: CropEdge[] = ["top", "right", "bottom", "left"];
 
+/**
+ * Pro-editor crop: while crop mode is active the element's clip is lifted so
+ * the FULL content stays visible; the cropped-out region is dimmed and the
+ * edge handles sit on the crop lines. Dragging updates the crop live; release
+ * commits `clip-path: inset(...)` through the normal style-commit path (one
+ * undo step per drag). Leaving crop mode re-applies the committed crop.
+ */
 export function DomEditCropHandles({
   selection,
   overlayRect,
   onStyleCommit,
 }: DomEditCropHandlesProps) {
   const gestureRef = useRef<CropGestureState | null>(null);
+  const [state, setState] = useState(() => {
+    const parsed = readElementCropInsets(selection.element);
+    return {
+      element: selection.element,
+      insets: {
+        top: parsed.top,
+        right: parsed.right,
+        bottom: parsed.bottom,
+        left: parsed.left,
+      } as ClipPathInsetSides,
+      radius: parsed.radius,
+    };
+  });
 
-  useEffect(
-    () => () => {
-      const gesture = gestureRef.current;
-      if (!gesture) return;
-      restoreInlineClipPath(gesture);
-      gestureRef.current = null;
-    },
-    [],
-  );
+  // Re-sync when the selection element changes (reselect, undo/redo reload).
+  if (state.element !== selection.element) {
+    const parsed = readElementCropInsets(selection.element);
+    setState({
+      element: selection.element,
+      insets: { top: parsed.top, right: parsed.right, bottom: parsed.bottom, left: parsed.left },
+      radius: parsed.radius,
+    });
+  }
+
+  // The value to re-apply when crop mode ends (latest committed crop).
+  const committedRef = useRef<string | null>(null);
+  {
+    const hasCrop =
+      state.insets.top > 0 ||
+      state.insets.right > 0 ||
+      state.insets.bottom > 0 ||
+      state.insets.left > 0;
+    committedRef.current = hasCrop ? buildInsetClipPathSides(state.insets, state.radius) : null;
+  }
+
+  // Lift the clip while crop mode is active so the full content shows through
+  // the dim; restore the committed crop on exit/unmount.
+  const liftedRef = useRef(false);
+  useEffect(() => {
+    const el = selection.element;
+    el.style.setProperty("clip-path", "none");
+    liftedRef.current = true;
+    return () => {
+      liftedRef.current = false;
+      if (committedRef.current) el.style.setProperty("clip-path", committedRef.current);
+      else el.style.removeProperty("clip-path");
+    };
+  }, [selection.element]);
+
+  const scaleX = overlayRect.editScaleX > 0 ? overlayRect.editScaleX : 1;
+  const scaleY = overlayRect.editScaleY > 0 ? overlayRect.editScaleY : 1;
+  const width = overlayRect.width / scaleX;
+  const height = overlayRect.height / scaleY;
+  const cropRect = cropRectFromInsets(overlayRect, state.insets, scaleX, scaleY);
 
   const startCropGesture = (edge: CropEdge, event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!onStyleCommit) return;
-    const { currentClipPath, inlineClipPath } = readCurrentClipPath(selection);
-    const parsed = parseInsetClipPathSides(currentClipPath);
-    const startInsets = parsed
-      ? { top: parsed.top, right: parsed.right, bottom: parsed.bottom, left: parsed.left }
-      : defaultInsets();
-    const scaleX = overlayRect.editScaleX > 0 ? overlayRect.editScaleX : 1;
-    const scaleY = overlayRect.editScaleY > 0 ? overlayRect.editScaleY : 1;
-    const width = overlayRect.width / scaleX;
-    const height = overlayRect.height / scaleY;
-    const lastValue = buildInsetClipPathSides(startInsets, parsed?.radius ?? 0);
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     gestureRef.current = {
       edge,
-      selection,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      startInsets,
-      radius: parsed?.radius ?? 0,
-      width,
-      height,
-      scaleX,
-      scaleY,
-      previousInlineClipPath: inlineClipPath,
-      lastValue,
+      startInsets: state.insets,
       didMove: false,
     };
   };
@@ -126,15 +129,13 @@ export function DomEditCropHandles({
       startInsets: gesture.startInsets,
       deltaX: event.clientX - gesture.startX,
       deltaY: event.clientY - gesture.startY,
-      scaleX: gesture.scaleX,
-      scaleY: gesture.scaleY,
-      width: gesture.width,
-      height: gesture.height,
+      scaleX,
+      scaleY,
+      width,
+      height,
     });
-    const nextValue = buildInsetClipPathSides(nextInsets, gesture.radius);
-    gesture.selection.element.style.setProperty("clip-path", nextValue);
-    gesture.lastValue = nextValue;
     gesture.didMove = true;
+    setState((prev) => ({ ...prev, insets: nextInsets }));
   };
 
   const finishCropGesture = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -143,7 +144,16 @@ export function DomEditCropHandles({
     event.preventDefault();
     event.stopPropagation();
     gestureRef.current = null;
-    if (gesture.didMove) void onStyleCommit?.("clip-path", gesture.lastValue);
+    if (!gesture.didMove) return;
+    // Commit to the file; the commit path re-applies the value to the live
+    // element, so lift it back to "none" afterwards — full content + dim is
+    // the crop-mode presentation.
+    const el = selection.element;
+    void Promise.resolve(
+      onStyleCommit?.("clip-path", buildInsetClipPathSides(state.insets, state.radius)),
+    ).then(() => {
+      if (liftedRef.current) el.style.setProperty("clip-path", "none");
+    });
   };
 
   const cancelCropGesture = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -151,14 +161,45 @@ export function DomEditCropHandles({
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     event.preventDefault();
     event.stopPropagation();
-    restoreInlineClipPath(gesture);
+    setState((prev) => ({ ...prev, insets: gesture.startInsets }));
     gestureRef.current = null;
   };
 
   return (
     <>
+      {/* Dim everything of the element outside the crop region. */}
+      <div
+        className="pointer-events-none absolute overflow-hidden"
+        style={{
+          left: overlayRect.left,
+          top: overlayRect.top,
+          width: overlayRect.width,
+          height: overlayRect.height,
+        }}
+      >
+        <div
+          className="absolute"
+          style={{
+            left: cropRect.left - overlayRect.left,
+            top: cropRect.top - overlayRect.top,
+            width: cropRect.width,
+            height: cropRect.height,
+            boxShadow: "0 0 0 100000px rgba(8, 8, 12, 0.6)",
+          }}
+        />
+      </div>
+      {/* Crop frame. */}
+      <div
+        className="pointer-events-none absolute border-2 border-studio-accent shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
+        style={{
+          left: cropRect.left,
+          top: cropRect.top,
+          width: cropRect.width,
+          height: cropRect.height,
+        }}
+      />
       {EDGES.map((edge) => {
-        const center = handleCenter(edge, overlayRect);
+        const center = handleCenter(edge, cropRect);
         const vertical = edge === "left" || edge === "right";
         return (
           <button

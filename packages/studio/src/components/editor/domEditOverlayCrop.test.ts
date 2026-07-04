@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCropInsetFromEdgeDrag } from "./domEditOverlayCrop";
+import { cropRectFromInsets, resolveCropInsetFromEdgeDrag } from "./domEditOverlayCrop";
 
 describe("resolveCropInsetFromEdgeDrag", () => {
   const startInsets = { top: 10, right: 20, bottom: 30, left: 40 };
@@ -58,5 +58,29 @@ describe("resolveCropInsetFromEdgeDrag", () => {
         height: 120,
       }),
     ).toEqual({ top: 0, right: 20, bottom: 30, left: 40 });
+  });
+});
+
+describe("cropRectFromInsets", () => {
+  it("shrinks the overlay rect by scaled insets", () => {
+    expect(
+      cropRectFromInsets(
+        { left: 100, top: 50, width: 200, height: 100 },
+        { top: 10, right: 40, bottom: 20, left: 30 },
+        2,
+        1,
+      ),
+    ).toEqual({ left: 160, top: 60, width: 60, height: 70 });
+  });
+
+  it("clamps to zero size when insets exceed the rect", () => {
+    const r = cropRectFromInsets(
+      { left: 0, top: 0, width: 100, height: 100 },
+      { top: 300, right: 300, bottom: 300, left: 300 },
+      1,
+      1,
+    );
+    expect(r.width).toBe(0);
+    expect(r.height).toBe(0);
   });
 });

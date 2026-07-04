@@ -1,6 +1,43 @@
-import type { ClipPathInsetSides } from "./clipPathHelpers";
+import { parseInsetClipPathSides, type ClipPathInsetSides } from "./clipPathHelpers";
 
 export type CropEdge = "top" | "right" | "bottom" | "left";
+
+export interface CropScreenRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Element-space insets → the cropped region in overlay (screen) space. */
+export function cropRectFromInsets(
+  rect: CropScreenRect,
+  insets: ClipPathInsetSides,
+  scaleX: number,
+  scaleY: number,
+): CropScreenRect {
+  const sx = scaleX > 0 ? scaleX : 1;
+  const sy = scaleY > 0 ? scaleY : 1;
+  const left = rect.left + insets.left * sx;
+  const top = rect.top + insets.top * sy;
+  return {
+    left,
+    top,
+    width: Math.max(0, rect.width - (insets.left + insets.right) * sx),
+    height: Math.max(0, rect.height - (insets.top + insets.bottom) * sy),
+  };
+}
+
+/** Current inset crop of an element (inline first, computed fallback), or zeros. */
+export function readElementCropInsets(element: HTMLElement): ClipPathInsetSides & {
+  radius: number;
+} {
+  const inline = element.style.getPropertyValue("clip-path").trim();
+  const value =
+    inline || element.ownerDocument.defaultView?.getComputedStyle(element).clipPath.trim() || "";
+  const parsed = parseInsetClipPathSides(value === "none" ? "" : value);
+  return parsed ?? { top: 0, right: 0, bottom: 0, left: 0, radius: 0 };
+}
 
 export interface CropInsetDragInput {
   edge: CropEdge;
