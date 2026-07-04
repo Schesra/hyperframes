@@ -52,9 +52,14 @@ export function inferClipPathPreset(
 export function parseInsetClipPathSides(
   value: string | undefined,
 ): ParsedInsetClipPathSides | null {
-  const match = /^inset\(\s*(.*?)\s*\)$/i.exec(value?.trim() ?? "");
+  // Unambiguous pattern (no nested optional whitespace) to avoid polynomial
+  // backtracking on adversarial input; trim the payload instead.
+  const match = /^inset\(([^()]*)\)$/i.exec(value?.trim() ?? "");
   if (!match) return null;
-  const parts = match[1].split(/\s+round\s+/i);
+  const parts = match[1]
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(/ round /i);
   const insetPart = parts[0]?.trim();
   if (!insetPart || parts.length > 2) return null;
 

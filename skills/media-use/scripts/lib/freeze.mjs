@@ -13,7 +13,9 @@ export async function freezeUrl(url, destPath) {
   // Fail fast on an advertised oversize body before reading a single byte.
   const declared = Number(res.headers.get("content-length"));
   if (declared > MAX_FREEZE_BYTES)
-    throw new Error(`freeze failed: ${declared} bytes exceeds ${MAX_FREEZE_BYTES} cap for ${where}`);
+    throw new Error(
+      `freeze failed: ${declared} bytes exceeds ${MAX_FREEZE_BYTES} cap for ${where}`,
+    );
 
   // Stream and abort once the cap is crossed, so a lying/chunked hostile URL
   // can't buffer the whole payload into memory before the check (M1).
