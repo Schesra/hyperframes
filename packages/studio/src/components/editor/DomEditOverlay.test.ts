@@ -336,6 +336,8 @@ describe("DomEditOverlay", () => {
     expect(gestureSpies.startGesture).toHaveBeenCalledWith(
       "drag",
       expect.objectContaining({ button: 0 }),
+      // Box gestures pass the (possibly crop-hugged) rect as the box geometry.
+      expect.objectContaining({ rect: expect.anything() }),
     );
 
     act(() => {
