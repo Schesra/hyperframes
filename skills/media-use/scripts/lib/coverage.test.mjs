@@ -36,6 +36,22 @@ test("weakness: no media-ops → ops guidance reference exists", () => {
   assert.ok(existsSync(join(SKILL, "references", "operations.md")), "operations.md missing");
 });
 
+test("weakness: no transcript-driven cutting → cut compiler entrypoints exist", async () => {
+  assert.ok(existsSync(join(SKILL, "scripts", "transcript-cut.mjs")), "transcript-cut missing");
+  assert.ok(existsSync(join(SKILL, "scripts", "lib", "cutlist.mjs")), "cutlist lib missing");
+  const cutlist = await import("./cutlist.mjs");
+  assert.equal(typeof cutlist.compileCutList, "function");
+});
+
+test("weakness: no auto-duck/loudness → duck compiler and recipes exist", async () => {
+  assert.ok(existsSync(join(SKILL, "scripts", "audio-duck.mjs")), "audio-duck missing");
+  assert.ok(existsSync(join(SKILL, "scripts", "lib", "duck.mjs")), "duck lib missing");
+  assert.ok(existsSync(join(SKILL, "references", "operations.md")), "operations.md missing");
+  const duck = await import("./duck.mjs");
+  assert.equal(typeof duck.speechSpans, "function");
+  assert.equal(typeof duck.duckKeyframes, "function");
+});
+
 test("weakness: no cross-project memory → global cache + ingest entrypoints exist", async () => {
   const cache = await import("./cache.mjs");
   assert.equal(typeof cache.cachePut, "function");
