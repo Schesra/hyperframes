@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { lintHyperframeHtml } from "../hyperframeLinter.js";
+import { collectClipBoxProps, clipStretchAxes } from "./composition.js";
 
 describe("composition rules", () => {
   describe("subcomposition guidance", () => {
@@ -1419,6 +1420,144 @@ describe("composition rules", () => {
       </body></html>`;
       const result = await lintHyperframeHtml(html);
       expect(find(result.findings)).toBeUndefined();
+    });
+  });
+
+  describe("clip_partial_inset_stretch", () => {
+    const find = (fs: Array<{ code: string }>) =>
+      fs.find((f) => f.code === "clip_partial_inset_stretch");
+
+    // A composition whose .clip base is `position:absolute; inset:0`, with one
+    // clip element carrying a specific #id rule of `overrideDecls`.
+    function comp(overrideDecls: string, extraClipAttrs = "") {
+      return `
+<html><body>
+  <style>
+    #root { position: relative; width: 1920px; height: 1080px; }
+    .clip { position: absolute; inset: 0; }
+    #card { ${overrideDecls} }
+  </style>
+  <div id="root" data-composition-id="c1" data-width="1920" data-height="1080">
+    <div id="card" class="clip"${extraClipAttrs ? ` ${extraClipAttrs}` : ""} data-start="0" data-duration="2">hi</div>
+  </div>
+  <script>window.__timelines = window.__timelines || {};</script>
+</body></html>`;
+    }
+
+    it("flags a clip that sets only bottom+left (far corner) with no width/height", async () => {
+      const result = await lintHyperframeHtml(comp("bottom: 40px; left: 40px;"));
+      const f = find(result.findings);
+      expect(f).toBeDefined();
+      expect(f?.severity).toBe("warning");
+      expect(f?.message).toContain("stretches horizontally and vertically");
+    });
+
+    it("flags a single-side override (left only) as a horizontal stretch", async () => {
+      const result = await lintHyperframeHtml(comp("left: 40px;"));
+      expect(find(result.findings)).toBeDefined();
+    });
+
+    it("does NOT flag when width AND height are both set (sized box)", async () => {
+      const result = await lintHyperframeHtml(
+        comp("top: 40px; left: 40px; width: 200px; height: 80px;"),
+      );
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does NOT flag a full-bleed clip that overrides nothing", async () => {
+      const result = await lintHyperframeHtml(comp("background: red;"));
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does NOT flag when all four sides are set explicitly (intentional stretch box)", async () => {
+      const result = await lintHyperframeHtml(
+        comp("top: 10px; right: 10px; bottom: 10px; left: 10px;"),
+      );
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does NOT flag when the opposite side is released to auto", async () => {
+      // left:40 pins left; right:auto releases the base right pin → no h-stretch.
+      // top/bottom both inherited-pinned but author touched neither → not a bug axis.
+      const result = await lintHyperframeHtml(
+        comp("left: 40px; right: auto; top: 40px; bottom: auto;"),
+      );
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does NOT flag when the element re-declares position: relative", async () => {
+      const result = await lintHyperframeHtml(comp("position: relative; left: 40px;"));
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does NOT fire at all when the file's .clip base has no inset:0", async () => {
+      const html = `
+<html><body>
+  <style>
+    .clip { position: absolute; } /* no inset:0 — not edge-pinned */
+    #card { left: 40px; }
+  </style>
+  <div id="root" data-composition-id="c1" data-width="1920" data-height="1080">
+    <div id="card" class="clip" data-start="0" data-duration="2">hi</div>
+  </div>
+  <script>window.__timelines = {};</script>
+</body></html>`;
+      expect(find((await lintHyperframeHtml(html)).findings)).toBeUndefined();
+    });
+
+    it("flags via an inline style override too", async () => {
+      const html = `
+<html><body>
+  <style>
+    .clip { position: absolute; inset: 0; }
+  </style>
+  <div id="root" data-composition-id="c1" data-width="1920" data-height="1080">
+    <div class="clip" style="top: 40px; left: 40px;" data-start="0" data-duration="2">hi</div>
+  </div>
+  <script>window.__timelines = {};</script>
+</body></html>`;
+      expect(find((await lintHyperframeHtml(html)).findings)).toBeDefined();
+    });
+  });
+
+  // Direct unit tests for the pure box-model logic (branch coverage without HTML).
+  describe("collectClipBoxProps / clipStretchAxes", () => {
+    it("2 far-corner sides, no size → both axes stretch", () => {
+      const p = collectClipBoxProps(["bottom: 40px; left: 40px;"]);
+      expect(clipStretchAxes(p)).toEqual({ horizontal: true, vertical: true });
+    });
+
+    it("width set but not height → only vertical could stretch, but untouched axis is quiet", () => {
+      // Author touched left (h) + width; vertical axis untouched → no XOR → no v-bug.
+      const p = collectClipBoxProps(["left: 40px; width: 200px;"]);
+      expect(clipStretchAxes(p)).toEqual({ horizontal: false, vertical: false });
+    });
+
+    it("both sides of an axis author-pinned → not a bug (XOR false)", () => {
+      const p = collectClipBoxProps(["left: 10px; right: 10px;"]);
+      expect(clipStretchAxes(p).horizontal).toBe(false);
+    });
+
+    it("inset shorthand override (all four) → no stretch bug", () => {
+      const p = collectClipBoxProps(["inset: 20px;"]);
+      expect(clipStretchAxes(p)).toEqual({ horizontal: false, vertical: false });
+    });
+
+    it("auto on the opposite side releases the base pin", () => {
+      const p = collectClipBoxProps(["left: 40px; right: auto;"]);
+      expect(clipStretchAxes(p).horizontal).toBe(false);
+    });
+
+    it("position:relative detaches from inset entirely", () => {
+      const p = collectClipBoxProps(["position: relative; left: 40px;"]);
+      expect(clipStretchAxes(p)).toEqual({ horizontal: false, vertical: false });
+    });
+
+    it("later blocks override earlier ones (inline wins)", () => {
+      // A matching <style> rule set width; the inline block then releases it (auto).
+      const p = collectClipBoxProps(["left: 40px; width: 200px;", "width: auto;"]);
+      expect(p.hasWidth).toBe(false);
+      expect(clipStretchAxes(p).horizontal).toBe(true);
     });
   });
 });

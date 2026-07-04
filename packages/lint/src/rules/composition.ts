@@ -6,6 +6,7 @@ import {
   stripJsComments,
   truncateSnippet,
   WINDOW_TIMELINE_ASSIGN_PATTERN,
+  type OpenTag,
 } from "../utils";
 import { COMPOSITION_VARIABLE_TYPES } from "@hyperframes/parsers/composition";
 
@@ -105,6 +106,226 @@ function rootClassStyledSelectors(styles: ExtractedBlock[], rootClasses: string[
     }
   }
   return offenders;
+}
+
+// ── clip_partial_inset_stretch helpers ───────────────────────────────────────
+// The canonical `.clip` rule (see hyperframes-core/minimal-composition.md) is
+// `position: absolute; inset: 0`, so every class="clip" element is pinned to all
+// four edges by default. A more specific selector (an #id / .class rule, or an
+// inline style) that overrides only SOME of top/right/bottom/left without also
+// giving width/height leaves the un-overridden sides pinned at inset:0's 0 — so
+// the element silently stretches between the author's sides and the inherited
+// zeros instead of shrink-wrapping. Reported four independent times; inspect
+// catches the symptom (content_overlap/text_occluded) but not the CSS root cause.
+
+const INSET_SIDES = ["top", "right", "bottom", "left"] as const;
+type InsetSide = (typeof INSET_SIDES)[number];
+
+type ClipBoxProps = {
+  authorPinned: Set<InsetSide>; // sides an author rule set to a real (non-auto) value
+  authorReleased: Set<InsetSide>; // sides an author rule set to `auto` (un-pins the base 0)
+  hasWidth: boolean;
+  hasHeight: boolean;
+  detachesFromInset: boolean; // position: static/relative/sticky — inset:0 no longer stretches
+};
+
+function parseCssDeclarations(decls: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const chunk of decls.split(";")) {
+    const idx = chunk.indexOf(":");
+    if (idx < 0) continue;
+    const prop = chunk.slice(0, idx).trim().toLowerCase();
+    const value = chunk
+      .slice(idx + 1)
+      .trim()
+      .toLowerCase();
+    if (prop && value) out.push([prop, value]);
+  }
+  return out;
+}
+
+// Expand an `inset` shorthand value into its four physical sides (1–4 tokens,
+// CSS margin order: all | block inline | top inline bottom | t r b l).
+function insetShorthandSides(value: string): Array<[InsetSide, string]> {
+  const t = value.split(/\s+/).filter(Boolean);
+  const top = t[0];
+  if (top === undefined) return [];
+  // CSS shorthand fill: right←top, bottom←top, left←right.
+  const right = t[1] ?? top;
+  const bottom = t[2] ?? top;
+  const left = t[3] ?? right;
+  return [
+    ["top", top],
+    ["right", right],
+    ["bottom", bottom],
+    ["left", left],
+  ];
+}
+
+function applySide(props: ClipBoxProps, side: InsetSide, value: string): void {
+  if (value === "auto") {
+    props.authorReleased.add(side);
+    props.authorPinned.delete(side);
+  } else {
+    props.authorPinned.add(side);
+    props.authorReleased.delete(side);
+  }
+}
+
+function applyInsetPair(props: ClipBoxProps, a: InsetSide, b: InsetSide, value: string): void {
+  const parts = value.split(/\s+/).filter(Boolean);
+  if (!parts[0]) return;
+  applySide(props, a, parts[0]);
+  applySide(props, b, parts[1] ?? parts[0]);
+}
+
+const POSITION_DETACH = new Set(["static", "relative", "sticky"]);
+
+// Per-property folders, keyed by CSS property. Kept as a table (rather than an
+// if/else chain) so each is a small single-purpose branch — the physical
+// top/right/bottom/left longhands are handled ahead of the table in applyDecl.
+const DECL_HANDLERS: Record<string, (props: ClipBoxProps, value: string) => void> = {
+  inset: (props, value) => {
+    for (const [side, v] of insetShorthandSides(value)) applySide(props, side, v);
+  },
+  "inset-block": (props, value) => applyInsetPair(props, "top", "bottom", value),
+  "inset-inline": (props, value) => applyInsetPair(props, "left", "right", value),
+  width: (props, value) => {
+    props.hasWidth = value !== "auto";
+  },
+  height: (props, value) => {
+    props.hasHeight = value !== "auto";
+  },
+  position: (props, value) => {
+    props.detachesFromInset = POSITION_DETACH.has(value);
+  },
+};
+
+function applyDecl(props: ClipBoxProps, prop: string, value: string): void {
+  if ((INSET_SIDES as readonly string[]).includes(prop)) {
+    applySide(props, prop as InsetSide, value);
+    return;
+  }
+  DECL_HANDLERS[prop]?.(props, value);
+}
+
+// Fold author declaration blocks (inline style + matching <style> rules, in
+// document order — later wins) into the merged box state. Exported for tests.
+export function collectClipBoxProps(declBlocks: string[]): ClipBoxProps {
+  const props: ClipBoxProps = {
+    authorPinned: new Set(),
+    authorReleased: new Set(),
+    hasWidth: false,
+    hasHeight: false,
+    detachesFromInset: false,
+  };
+  for (const block of declBlocks) {
+    for (const [prop, value] of parseCssDeclarations(block)) applyDecl(props, prop, value);
+  }
+  return props;
+}
+
+// Given the base `.clip { inset:0 }` (all sides pinned unless the author released
+// them with `auto`), decide whether the element silently stretches on an axis
+// where the author pinned EXACTLY ONE side (repositioning intent) yet left the
+// opposite side inherited-pinned and gave no size for that axis. Requiring
+// "exactly one author-pinned side" is what keeps intentional shapes quiet:
+// full-bleed (0 sides), fully-constrained 4-side boxes, and sized boxes
+// (width+height) never trip it. Exported for tests.
+export function clipStretchAxes(props: ClipBoxProps): { horizontal: boolean; vertical: boolean } {
+  if (props.detachesFromInset) return { horizontal: false, vertical: false };
+  const pinned = (s: InsetSide) => !props.authorReleased.has(s);
+  const authorXor = (a: InsetSide, b: InsetSide) =>
+    props.authorPinned.has(a) !== props.authorPinned.has(b);
+  return {
+    horizontal: pinned("left") && pinned("right") && !props.hasWidth && authorXor("left", "right"),
+    vertical: pinned("top") && pinned("bottom") && !props.hasHeight && authorXor("top", "bottom"),
+  };
+}
+
+type CssRuleBody = { selectors: string[]; decls: string };
+
+function extractCssRuleBodies(css: string): CssRuleBody[] {
+  const out: CssRuleBody[] = [];
+  const noComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = rulePattern.exec(noComments)) !== null) {
+    const header = (m[1] ?? "").trim();
+    if (!header || header.startsWith("@")) continue;
+    const selectors = header
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (selectors.length) out.push({ selectors, decls: m[2] ?? "" });
+  }
+  return out;
+}
+
+// The selector's subject (rightmost compound, after the last combinator).
+function subjectCompound(selector: string): string {
+  const parts = selector
+    .trim()
+    .split(/[\s>+~]+/)
+    .filter(Boolean);
+  return parts[parts.length - 1] ?? "";
+}
+
+// True once the file establishes the stretch precondition: a `.clip` rule with
+// position:absolute|fixed AND an all-zero inset base (inset:0 or all four
+// longhands at 0). Without it, class="clip" isn't edge-pinned, so no stretch.
+function clipBaseEstablishesInsetStretch(styles: ExtractedBlock[]): boolean {
+  for (const style of styles) {
+    for (const rule of extractCssRuleBodies(style.content)) {
+      if (
+        !rule.selectors.some((sel) =>
+          subjectCompound(sel)
+            .split(/[.#:[]/)
+            .includes("clip"),
+        )
+      )
+        continue;
+      if (!/position\s*:\s*(absolute|fixed)/.test(rule.decls)) continue;
+      const base = collectClipBoxProps([rule.decls]);
+      const allPinnedAtBase = INSET_SIDES.every((s) => base.authorPinned.has(s));
+      if (allPinnedAtBase) return true;
+    }
+  }
+  return false;
+}
+
+// Author declaration blocks that override this element's box: <style> rules
+// whose SUBJECT (rightmost compound) keys off the element's own id or a class it
+// carries, then its inline style (applied last so it wins). Selectors whose
+// subject carries an attribute/pseudo qualifier are skipped — can't match them
+// confidently without a real CSS engine, and a miss just under-reports.
+function clipOverrideDeclBlocks(
+  tag: OpenTag,
+  styles: ExtractedBlock[],
+  elementId: string | undefined,
+  classes: string[],
+): string[] {
+  // Match on the element's id and its NON-`clip` classes only. The bare `.clip`
+  // rule IS the inset:0 base (the inherited pin), not an override — folding it in
+  // would mark all four sides as author-set and cancel the partial-override
+  // signal. A more specific selector (#id / another class / inline) is the override.
+  const matchClasses = classes.filter((c) => c !== "clip");
+  const blocks: string[] = [];
+  for (const style of styles) {
+    for (const rule of extractCssRuleBodies(style.content)) {
+      const matches = rule.selectors.some((sel) => {
+        const subject = subjectCompound(sel);
+        if (/[[:]/.test(subject)) return false;
+        const idMatch = elementId ? subject.includes(`#${elementId}`) : false;
+        const classMatch = matchClasses.some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(subject));
+        return idMatch || classMatch;
+      });
+      if (matches) blocks.push(rule.decls);
+    }
+  }
+  const inline = readAttr(tag.raw, "style");
+  if (inline) blocks.push(inline);
+  return blocks;
 }
 
 export const compositionRules: Array<(ctx: LintContext) => HyperframeLintFinding[]> = [
@@ -878,5 +1099,51 @@ export const compositionRules: Array<(ctx: LintContext) => HyperframeLintFinding
     // duration from these at render time (see resolveAdapterDurationFloorSeconds
     // in runtime/init.ts). Not an error; data-duration is optional here.
     return [];
+  },
+
+  // clip_partial_inset_stretch
+  // fallow-ignore-next-line complexity
+  ({ tags, styles }) => {
+    // Only meaningful once the file's own `.clip` rule pins all four edges
+    // (position:absolute + inset:0). Without that base, class="clip" doesn't
+    // stretch, so there's nothing to warn about.
+    if (!clipBaseEstablishesInsetStretch(styles)) return [];
+
+    const findings: HyperframeLintFinding[] = [];
+    for (const tag of tags) {
+      if (tag.name === "audio" || tag.name === "script" || tag.name === "style") continue;
+      const classes = (readAttr(tag.raw, "class") || "").split(/\s+/).filter(Boolean);
+      if (!classes.includes("clip")) continue;
+      if (isCompositionRootOrMount(tag.raw)) continue;
+
+      const elementId = readAttr(tag.raw, "id") || undefined;
+      const blocks = clipOverrideDeclBlocks(tag, styles, elementId, classes);
+      if (blocks.length === 0) continue;
+
+      const axes = clipStretchAxes(collectClipBoxProps(blocks));
+      if (!axes.horizontal && !axes.vertical) continue;
+
+      const stretched = [axes.horizontal && "horizontally", axes.vertical && "vertically"]
+        .filter(Boolean)
+        .join(" and ");
+      const missing = [axes.horizontal && "width", axes.vertical && "height"]
+        .filter(Boolean)
+        .join("/");
+      findings.push({
+        code: "clip_partial_inset_stretch",
+        severity: "warning",
+        message:
+          `class="clip"${elementId ? ` #${elementId}` : ""} overrides only some of ` +
+          `top/right/bottom/left, so it stretches ${stretched}: the sides you didn't set stay ` +
+          `pinned at the base .clip { inset: 0 } and there is no explicit ${missing} to size it.`,
+        elementId,
+        fixHint:
+          `Set an explicit ${missing} (so the element shrink-wraps), or set the opposite inset ` +
+          `side(s) to auto to release the base pin, or give all four of top/right/bottom/left if ` +
+          `a stretched box is intended.`,
+        snippet: truncateSnippet(tag.raw),
+      });
+    }
+    return findings;
   },
 ];
