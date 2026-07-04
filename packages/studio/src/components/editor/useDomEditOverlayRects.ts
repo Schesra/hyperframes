@@ -16,7 +16,6 @@ import {
   rectsEqual,
   resolveElementForOverlay,
   selectionCacheKey,
-  toOverlayRect,
   toVisibleOverlayRect,
 } from "./domEditOverlayGeometry";
 
