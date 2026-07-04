@@ -22,6 +22,7 @@ import { GridOverlay } from "./GridOverlay";
 import type { GestureRecordingState } from "./GestureRecordControl";
 import { DomEditCropHandles } from "./DomEditCropHandles";
 import { DomEditRotateHandle } from "./DomEditRotateHandle";
+import { hugRectForElement } from "./domEditOverlayCrop";
 import { useCropOverlay } from "../../hooks/useCropMode";
 import { readDomEditSelectionShapeStyles, resolveBoxChromeClass } from "./domEditOverlayShape";
 import { useDomEditCompositionRect } from "./useDomEditCompositionRect";
@@ -416,12 +417,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
           aria-hidden="true"
           data-dom-edit-hover-box="true"
           className="pointer-events-none absolute rounded-md border border-studio-accent/80 bg-studio-accent/5 shadow-[0_0_0_1px_rgba(60,230,172,0.25)]"
-          style={{
-            left: hoverRect.left,
-            top: hoverRect.top,
-            width: hoverRect.width,
-            height: hoverRect.height,
-          }}
+          style={hugRectForElement(hoverRect, hoverSelection.element)}
         />
       )}
       {hasGroupSelection && groupOverlayItems.length > 1 && groupBounds && compRect.width > 0 && (

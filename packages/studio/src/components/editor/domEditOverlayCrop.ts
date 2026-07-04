@@ -102,3 +102,14 @@ export function resolveCropInsetFromMoveDrag(input: {
   const top = Math.min(Math.max(0, input.startInsets.top + input.deltaY / sy), totalY);
   return { left, right: totalX - left, top, bottom: totalY - top };
 }
+
+/** Display-only hug: shrink a projected rect by the element's inset crop.
+ *  For rects nothing writes back to (e.g. the hover ring). */
+export function hugRectForElement(
+  rect: CropScreenRect & { editScaleX: number; editScaleY: number },
+  element: HTMLElement,
+): CropScreenRect {
+  const insets = readElementCropInsets(element);
+  if (insets.top <= 0 && insets.right <= 0 && insets.bottom <= 0 && insets.left <= 0) return rect;
+  return cropRectFromInsets(rect, insets, rect.editScaleX, rect.editScaleY);
+}
