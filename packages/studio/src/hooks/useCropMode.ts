@@ -22,10 +22,14 @@ export function useCropModeProps(): CropModeProps {
 
 import type { OverlayRect } from "../components/editor/domEditOverlayGeometry";
 import type { DomEditSelection } from "../components/editor/domEditing";
-import { cropRectFromInsets, readElementCropInsets } from "../components/editor/domEditOverlayCrop";
+import { readElementCropInsets } from "../components/editor/domEditOverlayCrop";
 
 /** Overlay-side crop state: Escape-to-exit, toolbar availability publishing,
- *  and the "hug the cropped region" rect for the selection box. */
+ *  and the box clip that makes the selection outline hug the cropped region.
+ *  The box div itself always sits at the FULL element bounds — gestures write
+ *  its position directly during drags, so moving/resizing it in React would
+ *  fight them. The hug is purely visual: the element's inset clip-path scaled
+ *  into overlay space and applied to the box. */
 export function useCropOverlay(params: {
   selection: DomEditSelection | null;
   groupCount: number;
@@ -68,23 +72,18 @@ export function useCropOverlay(params: {
     cropInsets &&
     (cropInsets.top > 0 || cropInsets.right > 0 || cropInsets.bottom > 0 || cropInsets.left > 0),
   );
-  // Outside crop mode the selection box hugs the visible (cropped) region so
-  // the overlay matches what's actually on screen; crop mode shows the full
-  // element bounds (the crop frame is drawn by DomEditCropHandles).
-  // Spread keeps the full OverlayRect shape (editScaleX/Y) so the hugged rect
-  // can be handed to the gesture machinery as the box geometry.
-  const visualRect =
-    overlayRect && cropInsets && hasCropInsets && !cropMode
-      ? {
-          ...overlayRect,
-          ...cropRectFromInsets(
-            overlayRect,
-            cropInsets,
-            overlayRect.editScaleX,
-            overlayRect.editScaleY,
-          ),
-        }
-      : overlayRect;
 
-  return { hasCropInsets, visualRect };
+  const sx = overlayRect && overlayRect.editScaleX > 0 ? overlayRect.editScaleX : 1;
+  const sy = overlayRect && overlayRect.editScaleY > 0 ? overlayRect.editScaleY : 1;
+  const cropBoxClipPath =
+    cropInsets && hasCropInsets && !cropMode
+      ? `inset(${cropInsets.top * sy}px ${cropInsets.right * sx}px ${cropInsets.bottom * sy}px ${cropInsets.left * sx}px)`
+      : undefined;
+  // The resize handle sits at the box's bottom-right corner, which the crop
+  // clip would swallow — shift it to the visible region's corner instead.
+  const cropHandleOffsetPx = cropBoxClipPath
+    ? { right: (cropInsets?.right ?? 0) * sx, bottom: (cropInsets?.bottom ?? 0) * sy }
+    : undefined;
+
+  return { hasCropInsets, cropBoxClipPath, cropHandleOffsetPx };
 }

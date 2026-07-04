@@ -172,14 +172,15 @@ export const DomEditOverlay = memo(function DomEditOverlay({
 
   const compRect = useDomEditCompositionRect({ iframeRef, overlayRef });
 
-  const { hasCropInsets, visualRect } = useCropOverlay({
+  const { hasCropInsets, cropBoxClipPath, cropHandleOffsetPx } = useCropOverlay({
     selection,
     groupCount: groupSelections.length,
     cropMode,
     onCropModeChange,
     overlayRect,
   });
-  const boxClipPath = hasCropInsets ? undefined : selectionShapeStyles.clipPath;
+  // Inset crops use the overlay-scaled clip; other clip shapes keep the raw mirror.
+  const boxClipPath = hasCropInsets ? cropBoxClipPath : selectionShapeStyles.clipPath;
 
   // Off-canvas element indicators — dashed outlines for elements positioned
   // outside the composition bounds so users can find them.
@@ -453,14 +454,14 @@ export const DomEditOverlay = memo(function DomEditOverlay({
           />
         </>
       )}
-      {!hasGroupSelection && selection && overlayRect && visualRect && compRect.width > 0 && (
+      {!hasGroupSelection && selection && overlayRect && compRect.width > 0 && (
         <>
           {allowCanvasMovement && !cropMode && selection.capabilities.canApplyManualRotation && (
             <div
               className="pointer-events-none absolute"
               style={{
-                left: visualRect.left + visualRect.width / 2,
-                top: visualRect.top - 34,
+                left: overlayRect.left + overlayRect.width / 2,
+                top: overlayRect.top - 34,
                 width: 28,
                 height: 34,
                 transform: "translateX(-50%)",
@@ -475,7 +476,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
                 aria-label="Rotate selection"
                 onPointerDown={(e) => {
                   e.stopPropagation();
-                  gestures.startGesture("rotate", e, { rect: visualRect });
+                  gestures.startGesture("rotate", e);
                 }}
               />
             </div>
@@ -486,10 +487,10 @@ export const DomEditOverlay = memo(function DomEditOverlay({
             data-dom-edit-selection-box="true"
             className={`pointer-events-auto absolute rounded-md ${boxClipPath ? "shadow-[inset_0_0_0_2px_rgba(60,230,172,0.6)]" : "border border-studio-accent/80 shadow-[0_0_0_1px_rgba(60,230,172,0.25)]"} bg-studio-accent/5`}
             style={{
-              left: visualRect.left,
-              top: visualRect.top,
-              width: visualRect.width,
-              height: visualRect.height,
+              left: overlayRect.left,
+              top: overlayRect.top,
+              width: overlayRect.width,
+              height: overlayRect.height,
               clipPath: boxClipPath,
               cursor:
                 allowCanvasMovement && !cropMode && selection.capabilities.canApplyManualOffset
@@ -514,7 +515,7 @@ export const DomEditOverlay = memo(function DomEditOverlay({
                 return;
               }
               if (selection.capabilities.canApplyManualOffset) {
-                gestures.startGesture("drag", e, { rect: visualRect });
+                gestures.startGesture("drag", e);
                 return;
               }
               e.preventDefault();
@@ -533,10 +534,17 @@ export const DomEditOverlay = memo(function DomEditOverlay({
             {allowCanvasMovement && !cropMode && selection.capabilities.canApplyManualSize && (
               <div
                 className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-studio-accent border border-studio-accent/60"
-                style={{ cursor: "se-resize", touchAction: "none" }}
+                style={{
+                  cursor: "se-resize",
+                  touchAction: "none",
+                  ...(cropHandleOffsetPx && {
+                    right: cropHandleOffsetPx.right - 6,
+                    bottom: cropHandleOffsetPx.bottom - 6,
+                  }),
+                }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
-                  gestures.startGesture("resize", e, { rect: visualRect });
+                  gestures.startGesture("resize", e);
                 }}
               />
             )}
