@@ -211,8 +211,10 @@ export const DomEditOverlay = memo(function DomEditOverlay({
       if (!isElementComputedVisible(item.element)) continue;
       // Groups use their members' union (where they actually render), so a group
       // whose members sit inside the canvas isn't flagged off-canvas by a stale
-      // wrapper box.
-      const r = groupAwareOverlayRect(overlay, iframe, item.element);
+      // wrapper box. Crop-hug the result so an inset crop that keeps the visible
+      // part on-canvas doesn't flag the element either.
+      const base = groupAwareOverlayRect(overlay, iframe, item.element);
+      const r = base ? { ...base, ...hugRectForElement(base, item.element) } : null;
       if (!r) continue;
       // Any edge crossing the composition border → gray-zone indicator (the
       // in-canvas portion is clipped away below, so only the sliver shows).
