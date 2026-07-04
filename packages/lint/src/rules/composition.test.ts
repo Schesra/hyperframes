@@ -389,6 +389,24 @@ describe("composition rules", () => {
       const finding = result.findings.find((f) => f.code === "overlapping_clips_same_track");
       expect(finding).toBeUndefined();
     });
+
+    it("does not flag adjacencies where parseFloat + add drifts by a few ulps", async () => {
+      // parseFloat("0.1") + parseFloat("0.2") = 0.30000000000000004
+      const html = `
+<html><body>
+  <div data-composition-id="c1" data-width="1920" data-height="1080">
+    <div class="clip" data-start="0.1" data-duration="0.2" data-track-index="0">A</div>
+    <div class="clip" data-start="0.3" data-duration="0.2" data-track-index="0">B</div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    window.__timelines["c1"] = gsap.timeline({ paused: true });
+  </script>
+</body></html>`;
+      const result = await lintHyperframeHtml(html);
+      const finding = result.findings.find((f) => f.code === "overlapping_clips_same_track");
+      expect(finding).toBeUndefined();
+    });
   });
 
   describe("root_composition_missing_html_wrapper", () => {
@@ -1135,6 +1153,20 @@ describe("composition rules", () => {
           window.__timelines = window.__timelines || {};
           const tl = gsap.timeline({ paused: true });
           window.__timelines["main"] = tl;
+        </script>
+      </body></html>`;
+      const result = await lintHyperframeHtml(html);
+      expect(find(result.findings)).toBeUndefined();
+    });
+
+    it("does not error when a GSAP timeline is registered with a computed bracket key", async () => {
+      const html = `<html><body>
+        <div data-composition-id="main" data-start="0" data-width="1920" data-height="1080"></div>
+        <script>
+          var spec = { id: "main" };
+          window.__timelines = window.__timelines || {};
+          const tl = gsap.timeline({ paused: true });
+          window.__timelines[spec.id] = tl;
         </script>
       </body></html>`;
       const result = await lintHyperframeHtml(html);

@@ -112,6 +112,37 @@ describe("core rules", () => {
     expect(result.findings.find((f) => f.code === "root_missing_dimensions")).toBeUndefined();
   });
 
+  it("skips a leading <svg> defs block when detecting the composition root", async () => {
+    // Regression: two independent reports of a leading <svg><defs><filter>...
+    // block (icon/gradient/filter plumbing referenced via url(#id) elsewhere)
+    // getting mistaken for the composition root, since findRootTag returned
+    // the first non-script/style/meta/link/title body child unconditionally.
+    // The <svg> here carries no composition markers, so it must be skipped in
+    // favor of the real root that follows it.
+    const html = `
+<html><body>
+  <svg width="0" height="0" style="position:absolute">
+    <defs><filter id="glow"><feGaussianBlur stdDeviation="4" /></filter></defs>
+  </svg>
+  <div id="root" data-composition-id="c1" data-width="1920" data-height="1080"></div>
+  <script>window.__timelines = window.__timelines || {};</script>
+</body></html>`;
+    const result = await lintHyperframeHtml(html);
+    expect(result.findings.find((f) => f.code === "root_missing_composition_id")).toBeUndefined();
+    expect(result.findings.find((f) => f.code === "root_missing_dimensions")).toBeUndefined();
+  });
+
+  it("still treats an <svg> as the root when it carries composition markers itself", async () => {
+    const html = `
+<html><body>
+  <svg id="root" data-composition-id="c1" data-width="1920" data-height="1080"></svg>
+  <script>window.__timelines = window.__timelines || {};</script>
+</body></html>`;
+    const result = await lintHyperframeHtml(html);
+    expect(result.findings.find((f) => f.code === "root_missing_composition_id")).toBeUndefined();
+    expect(result.findings.find((f) => f.code === "root_missing_dimensions")).toBeUndefined();
+  });
+
   it("reports error when timeline registry is missing", async () => {
     const html = `
 <html><body>
@@ -665,6 +696,38 @@ body {
       const result = await lintHyperframeHtml(html);
       const finding = result.findings.find((f) => f.code === "timeline_id_mismatch");
       expect(finding).toBeUndefined();
+    });
+
+    it("accepts object-literal timeline registration and extracts its keys", async () => {
+      const html = `
+<html><body>
+  <div data-composition-id="comp-1" data-width="1920" data-height="1080"></div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    window.__timelines = { "comp-1": tl };
+  </script>
+</body></html>`;
+      const result = await lintHyperframeHtml(html);
+      expect(result.findings.find((f) => f.code === "missing_timeline_registry")).toBeUndefined();
+      expect(
+        result.findings.find((f) => f.code === "timeline_registry_missing_init"),
+      ).toBeUndefined();
+      expect(result.findings.find((f) => f.code === "timeline_id_mismatch")).toBeUndefined();
+    });
+
+    it("reports mismatched object-literal timeline registration keys", async () => {
+      const html = `
+<html><body>
+  <div data-composition-id="comp-1" data-width="1920" data-height="1080"></div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    window.__timelines = { main: tl };
+  </script>
+</body></html>`;
+      const result = await lintHyperframeHtml(html);
+      const finding = result.findings.find((f) => f.code === "timeline_id_mismatch");
+      expect(finding).toBeDefined();
+      expect(finding?.message).toContain('Timeline registered as "main"');
     });
   });
 

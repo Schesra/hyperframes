@@ -9,12 +9,16 @@
       "hash": "844c54a06fd16d3c",
       "files": 17
     },
+    "figma": {
+      "hash": "0adc2a1e01767db7",
+      "files": 1
+    },
     "general-video": {
       "hash": "a30225e30ec7b06c",
       "files": 1
     },
     "hyperframes": {
-      "hash": "e0cf1bb2843bc834",
+      "hash": "2bd5cdf9f851b4d2",
       "files": 1
     },
     "hyperframes-animation": {
@@ -33,16 +37,20 @@
       "hash": "18a14a79da6cbc06",
       "files": 68
     },
+    "hyperframes-keyframes": {
+      "hash": "47f20312033792c3",
+      "files": 3
+    },
     "hyperframes-media": {
-      "hash": "096b2ab0a43b05dd",
-      "files": 40
+      "hash": "eb72d0765185b36d",
+      "files": 44
     },
     "hyperframes-registry": {
       "hash": "e3b389526834109d",
       "files": 10
     },
     "media-use": {
-      "hash": "fba6e0963e431b1e",
+      "hash": "75dda0086dda18ce",
       "files": 19
     },
     "motion-graphics": {
@@ -66,7 +74,7 @@
       "files": 70
     },
     "slideshow": {
-      "hash": "2f006c93745fcc32",
+      "hash": "63c685cd4a93bfa5",
       "files": 2
     },
     "talking-head-recut": {

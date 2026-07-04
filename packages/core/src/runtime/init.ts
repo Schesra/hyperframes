@@ -28,6 +28,7 @@ import { createRuntimeStartTimeResolver } from "./startResolver";
 import { createClipTree } from "./clipTree";
 import { loadExternalCompositions, loadInlineTemplateCompositions } from "./compositionLoader";
 import { applyCaptionOverrides } from "./captionOverrides";
+import { applyPositionEdits } from "./positionEdits";
 import { createColorGradingRuntime, type RuntimeColorGradingApi } from "./colorGrading";
 import { TransportClock } from "./clock";
 import { WebAudioTransport } from "./webAudioTransport";
@@ -72,6 +73,12 @@ function resolveExportRenderFps(): ExportRenderFpsResolution {
 
 export function initSandboxRuntimeModular(): void {
   const state = createRuntimeState();
+  // SDK moveElement edits must render even when no usable GSAP timeline ever
+  // binds (CSS/WAAPI-animated or fully static compositions) — apply at init.
+  // This runs at DOMContentLoaded, after inline composition scripts have
+  // parsed their tweens, so GSAP (when present) won't fold the translate.
+  // Re-applied on every timeline bind for the rebind/soft-reload paths.
+  applyPositionEdits(document);
   const exportRenderFps = resolveExportRenderFps();
   state.canonicalFps = exportRenderFps.fps ?? state.canonicalFps;
   if (window.__HF_EXPORT_RENDER_SEEK_CONFIG) {
@@ -496,7 +503,16 @@ export function initSandboxRuntimeModular(): void {
 
   const resolveMediaStartSeconds = (element: Element, fallback = 0): number => {
     if (!element.hasAttribute("data-hf-auto-start") && element.hasAttribute("data-start")) {
-      return Math.max(0, Number(element.getAttribute("data-start") ?? 0) || 0);
+      // `data-start` is authored relative to the media element's OWN sub-
+      // composition, not the root timeline — `fallback` carries the host
+      // composition's resolved absolute start (see syncMediaForCurrentState's
+      // inheritedStart), so it must be added, not discarded. Skipping it made
+      // a nested video play from root t=0 instead of holding until its
+      // parent scene began (issue #1838) — resolveStartForElement's own
+      // absolute-expression branch already adds this same host offset, this
+      // fast literal-value path just didn't.
+      const own = Math.max(0, Number(element.getAttribute("data-start") ?? 0) || 0);
+      return own + fallback;
     }
     return resolveStartForElement(element, fallback);
   };
@@ -1189,6 +1205,12 @@ export function initSandboxRuntimeModular(): void {
       // during initial rebind (timing race on first load / soft reload).
       const applyFn = (window as Record<string, unknown>).__hfStudioManualEditsApply;
       if (typeof applyFn === "function") applyFn();
+
+      // SDK moveElement edits (data-hf-edit-base-x/y markers) render as a
+      // CSS translate delta. Must run after the timeline is bound so GSAP has
+      // already parsed the elements — a translate present at first parse gets
+      // folded into the cached transform and lost per-axis on seek.
+      applyPositionEdits(document);
     }
     if (resolution.diagnostics) {
       postRuntimeMessage({
