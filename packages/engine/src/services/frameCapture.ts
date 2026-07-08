@@ -2677,6 +2677,11 @@ export async function captureFrameToBufferPipelined(
     if (gapStatic) {
       session.staticDedupCount = (session.staticDedupCount ?? 0) + 1;
       session.capturePerf.frames += 1;
+      // Advance the watermark on reuse too, not just on real captures — the
+      // gap-check above starts from lastEncodeResultFrame, so leaving it
+      // pinned to the last REAL capture makes every consecutive reuse rescan
+      // an ever-widening window instead of just the one new frame (review).
+      session.lastEncodeResultFrame = frameIndex;
       return { encodeResult: session.lastEncodeResult, captureTimeMs: Date.now() - startTime };
     }
   }

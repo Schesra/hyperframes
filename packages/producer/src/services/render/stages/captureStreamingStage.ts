@@ -526,11 +526,18 @@ export async function runCaptureStreamingStage(
       // orchestrator's DrawElementVerificationError handler re-renders via
       // screenshot (post-#2026 it also reverts any worker inversion).
       // Intentionally ONE guard shared by all workers rather than one per
-      // worker: Node is single-threaded and the guard's checks run
-      // synchronously between await points, so there's no cross-worker race
-      // on `parallelStats`. Sharing also means the rolling median it tracks
-      // is computed across every worker's interleaved frames together,
-      // which is a better signal than per-worker medians would be.
+      // worker, so the rolling median it tracks is computed across every
+      // worker's interleaved frames together — a better signal than
+      // per-worker medians would be. This IS touched from concurrent workers
+      // across real await points (recapture, PSNR), so the shared
+      // `sizes`/`absFloor`/`acceptedSmall` state can interleave — safe by
+      // construction rather than by single-threadedness: `absFloor` only
+      // ratchets down (order-independent min), `sizes` is append-only (order
+      // doesn't affect the median once ≥12 samples exist), and
+      // `acceptedSmall`'s fast path only ever fires on exact byte-equality
+      // against a buffer some worker already re-verified deterministic — so
+      // whichever worker's buffer lands there, the equality check itself is
+      // what re-validates it, not which worker wrote it (review).
       const parallelStats: DeDrainStats = {
         verifyChecked: 0,
         blankSuspects: 0,
