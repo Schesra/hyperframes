@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <title>__TITLE__</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800;900&family=Montserrat:wght@700;900&family=Roboto+Mono:wght@500;600;700&display=block" rel="stylesheet">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #E7E2D6;
+        font-family: "Be Vietnam Pro", sans-serif; color: #1E2A3A; }
+      .scene-layer { position: absolute; top: 0; left: 0; width: 1080px; height: 1920px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="__DUR__" data-width="1080" data-height="1920">
+
+      <div id="ambient-bg" class="scene-layer" data-composition-id="ambient-bg" data-composition-src="compositions/ambient-bg.html" data-start="0" data-duration="__DUR__" data-track-index="3" data-width="1080" data-height="1920"></div>
+
+      <!-- one layer per beat; mount at beat start, duration = beat length + 0.4s outgoing-fade overlap; tracks 11+ -->
+      <!-- <div id="s-slug" class="scene-layer" data-composition-id="sNN-slug" data-composition-src="compositions/sNN-slug.html" data-start="0" data-duration="0" data-track-index="11" data-width="1080" data-height="1920"></div> -->
+
+      <!-- captions AFTER scenes in DOM so they render on top -->
+      <div id="captions" class="scene-layer" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="__DUR__" data-track-index="2" data-width="1080" data-height="1920"></div>
+
+      <audio id="narration" data-start="0" data-duration="__DUR__" data-track-index="4" data-volume="1" src="assets/narration.mp3"></audio>
+      <!-- BGM ducked under voice (or use audio-duck tooling for precise ducking): -->
+      <!-- <audio id="bgm" data-start="0" data-duration="__DUR__" data-track-index="5" data-volume="0.16" src="assets/audio/bgm.mp3"></audio> -->
+      <!-- one <audio> per SFX cue from audio_meta.json, tracks 6-9, data-start = cue time -->
+    </div>
+
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        const S = { /* slug: "#s-slug", ... in beat order */ };
+        const all = Object.values(S);
+        tl.set(all[0], { autoAlpha: 1 }, 0);
+        all.slice(1).forEach((s) => tl.set(s, { autoAlpha: 0 }, 0));
+
+        // Write ONE helper per transition type chosen in the Step 3 map
+        // (recipes: hyperframes-animation/transitions/catalog.md + per-type reference files).
+        function hardCut(o, i, t, d) {            // Act 1 default
+          tl.to(o, { autoAlpha: 0, scale: 1.05, duration: d, ease: "power2.in" }, t);
+          tl.fromTo(i, { autoAlpha: 0, scale: 0.97 }, { autoAlpha: 1, scale: 1, duration: d, ease: "power2.out" }, t);
+        }
+        function pushLeft(o, i, t, d) {           // Act 1 variety
+          tl.to(o, { autoAlpha: 0, xPercent: -14, duration: d, ease: "power2.inOut" }, t);
+          tl.fromTo(i, { autoAlpha: 0, xPercent: 14 }, { autoAlpha: 1, xPercent: 0, duration: d, ease: "power2.inOut" }, t);
+        }
+        function reveal(o, i, t) {                // THE SWITCH — pair with ambient act crossfade
+          tl.to(o, { autoAlpha: 0, scale: 0.96, duration: 0.7, ease: "power2.inOut" }, t);
+          tl.fromTo(i, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 0.9, ease: "power3.out" }, t + 0.1);
+        }
+        function softFade(o, i, t, d) {           // Act 2 default
+          tl.to(o, { autoAlpha: 0, duration: d, ease: "sine.inOut" }, t);
+          tl.fromTo(i, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: d, ease: "sine.inOut" }, t);
+        }
+
+        // Apply the Step 3 transition map, e.g.:
+        // hardCut(S.ooo, S.questions, 3.91, 0.3);
+        // reveal(S.wrongfast, S.arkon, 85.73);
+        // softFade(S.arkon, S.close, 101.61, 0.4);
+
+        tl.set(all[all.length - 1], { autoAlpha: 1 }, __DUR__ - 0.3);
+        tl.set({}, {}, __DUR__);
+        window.__timelines["main"] = tl;
+      })();
+    </script>
+  </body>
+</html>

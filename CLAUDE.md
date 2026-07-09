@@ -4,11 +4,11 @@ Open-source video rendering framework: write HTML, render video.
 
 ## Skills
 
-This repo ships 20 AI agent skills via [vercel-labs/skills](https://github.com/vercel-labs/skills). Install them before writing compositions — they encode framework-specific patterns that generic docs don't cover.
+This repo ships 23 AI agent skills via [vercel-labs/skills](https://github.com/vercel-labs/skills). Install them before writing compositions — they encode framework-specific patterns that generic docs don't cover.
 
 ```bash
 npx skills add heygen-com/hyperframes --full-depth              # interactive picker
-npx skills add heygen-com/hyperframes --all --full-depth        # install all 20 (skips picker)
+npx skills add heygen-com/hyperframes --all --full-depth        # install all 23 (skips picker)
 npx skills add heygen-com/hyperframes --skill <name> --full-depth  # just one (bare name, no leading slash)
 ```
 
@@ -21,11 +21,13 @@ Keep `--full-depth`: it installs the current `main`. Without it, `skills add` fe
 - `/product-launch-video` — a **product** URL (or a pre-written script / text brief in no-capture mode) → product launch / promo video, up to ~3 min (sweet spot ~30-90s).
 - `/website-to-video` — a **general** website / URL → a video _of_ the site (tour / showcase / social clip from captured screenshots + assets); for a product **launch / promo**, use `/product-launch-video`.
 - `/faceless-explainer` — arbitrary text, **no URL and no website capture** → faceless explainer, up to ~3 min (sweet spot ~30-90s); every visual is LLM-invented (typography / abstract graphics / diagram / data-viz).
+- `/facebook-post-to-video` — a **specific hot/trending social post** the user pastes or describes → reaction / commentary video (hot-take, fact-check, recap+opinion, meme-remix listicle, drama-recap), short native/vertical or longer, decided per post. Never scraped; real assets (post screenshot, photos, logos, clips, memes) come from the user.
 - `/pr-to-video` — a GitHub PR (URL / `owner/repo#N` / "this PR") → code-change explainer, up to ~3 min (changelog / feature reveal / fix / refactor). A PR link, not a product website.
 - `/embedded-captions` — an existing talking-head video (MP4) → the same footage with captions / subtitles added (verbatim rail + embedded climax, or pure-cinematic embed); the footage itself is untouched (no NLE-style editing).
 - `/talking-head-recut` — an existing talking-head / interview / podcast video (MP4) → the same footage packaged with designed **graphic overlays** (kinetic titles, lower-thirds, data callouts, pull-quotes, side panels, PiP) synced to the transcript; the clip plays unchanged underneath, footage untouched. For plain captions/subtitles → `/embedded-captions`.
 - `/motion-graphics` — a short (typically under 10s) design-led **motion graphic**, motion-is-the-message, no narration: kinetic type, a stat / number count-up, a chart, a logo sting, a lower-third / overlay, or an animated tweet / headline / captured-page highlight; rendered to MP4 or a transparent overlay. Longer / narrated / custom → `/general-video`.
 - `/music-to-video` — a **music track** (audio file, or video to pull audio from) → beat-synced video (lyric / slideshow / kinetic promo). Music drives pacing; user-supplied images / videos are cut onto the same beat grid.
+- `/bitsness-video` — a **pre-recorded narration MP3 + script** (typically Vietnamese) → 9:16 channel video in the Bitsness formula: word-level karaoke captions synced to the real voice, one micro-world graphic scene per narration beat, a two-act palette switch at the reveal, act-aware transitions, and a BGM+SFX layer. The recorded audio is the timing backbone; script-only briefs generate TTS via `/media-use` first.
 - `/slideshow` — a **presentation / pitch deck / interactive deck** — discrete slides, fragment reveals, branching, hotspot navigation, presenter mode. Output is a navigable deck, not a rendered video.
 - `/general-video` — fallback for any other video creation (title card, longer brand / sizzle reel, multi-scene montage, static loop, custom composition); the original hyperframes flow — design → plan → layout → build → validate, any length.
 - `/remotion-to-hyperframes` — port an existing Remotion (React) composition to HyperFrames HTML. One-way migration, not creation.
@@ -34,6 +36,7 @@ Keep `--full-depth`: it installs the current `main`. Without it, `skills add` fe
 
 Atomic capabilities the creation workflows compose against — pull one when you need that specific layer:
 
+- `/hook-writing` — write, pick, or audit a video's opening hook: the four cognitive triggers, a hook-type taxonomy mapped to HyperFrames blueprints, platform timing rules, and a self-audit checklist. Shared mechanics layer under every workflow's own Hook strategy section.
 - `/hyperframes-core` — the composition contract: `data-*` timing attributes, `class="clip"`, tracks, sub-compositions, variables, framework-owned media playback, determinism rules. Read before writing composition HTML.
 - `/hyperframes-animation` — all animation knowledge: atomic motion rules, scene blueprints, transitions, runtime adapters (GSAP default, plus Lottie / Three.js / Anime.js / CSS / WAAPI / TypeGPU).
 - `/hyperframes-keyframes` — seek-safe keyframe authoring across runtimes: GSAP timelines, CSS keyframes, Anime.js, WAAPI, FLIP, paths, masks, SVG morph/draw, text trails, 3D depth; plus `hyperframes keyframes` diagnostics for surfacing and verifying rendered motion.

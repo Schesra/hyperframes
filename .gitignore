@@ -147,3 +147,6 @@ tmp/
 
 # Local editor settings
 .zed/
+
+# Private input media (not part of the toolkit)
+Source/

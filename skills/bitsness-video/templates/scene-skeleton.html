@@ -1,0 +1,38 @@
+<template id="sNN-slug-template">
+  <div data-composition-id="sNN-slug" data-start="0" data-duration="__MOUNT_DUR__" data-width="1080" data-height="1920">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800;900&family=Roboto+Mono:wght@500;600;700&display=block" />
+    <div class="scene">
+      <!-- micro-world metaphor elements per the approved storyboard row -->
+      <div class="punch" id="punch">PUNCH LINE <b>KEYWORD</b></div>
+    </div>
+    <style>
+      /* Act 1 card kit (see references/style-skins.md; swap values for Act 2 / escbase) */
+      [data-composition-id="sNN-slug"] { position: absolute; inset: 0; overflow: hidden; font-family: "Be Vietnam Pro", sans-serif; color: #3A3327; }
+      /* padding keeps the top chrome (0-100px) and caption zone (bottom ~500px) clear */
+      [data-composition-id="sNN-slug"] .scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 250px 56px 500px; box-sizing: border-box; gap: 30px; }
+      [data-composition-id="sNN-slug"] .card { background: #F4EFE3; border: 2px solid #C9B98E; border-radius: 16px; box-shadow: 0 12px 28px rgba(90,70,40,0.16); }
+      [data-composition-id="sNN-slug"] .card.hot { background: #fff; border-color: #D0492F; }
+      [data-composition-id="sNN-slug"] .badge { font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 20px; padding: 6px 14px; border-radius: 100px; color: #D0492F; background: rgba(208,73,47,0.14); }
+      [data-composition-id="sNN-slug"] .punch { font-weight: 900; font-size: 54px; line-height: 1.22; text-align: center; }
+      [data-composition-id="sNN-slug"] .punch b { color: #D0492F; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        const root = '[data-composition-id="sNN-slug"]';
+        const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+        // 1. hide late elements up front (autoAlpha set at 0), never via CSS transform
+        tl.set(root + " .punch", { autoAlpha: 0 }, 0);
+        // 2. element timings are RELATIVE: rel = narration word time − beat start
+        //    implement the storyboard's named motion recipes here (hyperframes-animation rules)
+        // 3. punch lands in the beat's second half:
+        tl.set(root + " .punch", { autoAlpha: 1 }, 2.0);
+        tl.from(root + " .punch", { y: 18, scale: 0.95, duration: 0.45, ease: "back.out(1.5)" }, 2.0);
+        // 4. keep something moving mid-beat (no static frame > 3s)
+        tl.set({}, {}, __MOUNT_DUR__); // pin timeline length to the mount duration
+        window.__timelines = window.__timelines || {};
+        window.__timelines["sNN-slug"] = tl;
+      })();
+    </script>
+  </div>
+</template>

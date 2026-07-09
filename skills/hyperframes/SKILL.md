@@ -31,6 +31,7 @@ Atomic capabilities you load **on demand** — not full workflows; they never ow
 | **Animate** — atomic motion, scene blueprints, transitions, runtime adapters (GSAP / Lottie / Three.js / Anime.js / CSS / WAAPI / TypeGPU)                               | `/hyperframes-animation` |
 | **Author seek-safe keyframes** — GSAP timelines, CSS keyframes, Anime.js, WAAPI, FLIP, paths, masks, SVG morph/draw, 3D depth, plus `hyperframes keyframes` diagnostics  | `/hyperframes-keyframes` |
 | **Creative direction** — `frame.md` / `design.md`, palettes, typography, narration, beat planning, audio-reactive                                                        | `/hyperframes-creative`  |
+| **Write / pick / audit a hook** — the four cognitive triggers, hook-type taxonomy mapped to blueprints, platform timing, self-audit checklist                          | `/hook-writing`          |
 | **Media** — resolve/generate BGM, SFX, image, icon, brand logo, voice, color grade, LUT; TTS voiceover, transcription, background removal, captions; cross-project reuse | `/media-use`             |
 | **CLI dev loop** — init, lint, validate, inspect, preview, render, publish, doctor                                                                                       | `/hyperframes-cli`       |
 | **Install registry blocks / components** (`hyperframes add`)                                                                                                             | `/hyperframes-registry`  |
@@ -46,7 +47,7 @@ This section knows only the top-level workflows; it does not load their internal
 
 Routing needs to know **what the video is about** — its input and subject. If that's unspecified ("make a video about our thing" with no URL, product, topic, or asset), ask before entering any workflow — committing to a workflow IS the routing decision. At most two questions:
 
-- **Input** — a product (URL / brief), a general website, a GitHub PR, a topic to explain, or an existing talking-head video?
+- **Input** — a product (URL / brief), a general website, a GitHub PR, a topic to explain, a specific hot/trending social post to react to, or an existing talking-head video?
 
 **Mode** — if the request carries an ongoing autonomous signal ("surprise me", "decide for me", "just build it"), note it and pass it into the workflow: the whole run goes autonomous and no later step re-asks. With no signal, the workflow asks the mode as its first brief question. Default is collaborative. (`/motion-graphics` is autonomous by design.) Semantics: `hyperframes-core` → `references/brief-contract.md`.
 
@@ -59,11 +60,13 @@ Routing needs to know **what the video is about** — its input and subject. If 
 | `/product-launch-video`    | **Selling a product** (SaaS, app, company / product site) — from a URL, brief, or script → a **promo**. The default for any commercial URL, even if the site is only named.                                                                         |
 | `/website-to-video`        | **Showing a site itself** — a tour / showcase built from the site's own screenshots. For non-commercial sites (portfolio, blog, docs, personal, event), or when the user wants a tour, not a promo.                                                 |
 | `/faceless-explainer`      | **Explaining a topic / concept** from text — no product, no URL; every visual is LLM-invented                                                                                                                                                       |
+| `/facebook-post-to-video`  | **Reacting to a specific hot/trending social post** the user pastes or describes — hot-take, fact-check, recap+opinion, meme-remix listicle, or drama-recap; never scraped                          |
 | `/pr-to-video`             | A **GitHub PR / code change** → changelog / feature-reveal / fix / refactor explainer                                                                                                                                                               |
 | `/embedded-captions`       | Adding **captions / subtitles** to an existing talking-head video (footage untouched)                                                                                                                                                               |
 | `/talking-head-recut`      | Packaging an existing talking-head video with **designed graphic overlays** — lower-thirds, data callouts, kinetic titles, pull-quotes                                                                                                              |
 | `/motion-graphics`         | A short (~under 10s), **unnarrated** piece where the **motion _is_ the message** — kinetic type, a stat / chart hit, a logo sting, an animated map, an animated tweet / headline, a **standalone** lower-third / overlay (MP4 or transparent alpha) |
 | `/music-to-video`          | A **music track** → a **beat-synced** video — lyric video, slideshow, or kinetic promo; the music drives pacing (optional user images / videos cut onto the beat grid)                                                                              |
+| `/bitsness-video`          | A **pre-recorded narration MP3 + script** → 9:16 channel video in the Bitsness formula — karaoke word captions on the real voice, one micro-world scene per beat, two-act palette switch at the reveal |
 | `/slideshow`               | A **presentation / pitch deck / interactive deck** — discrete slides, fragments, branching, hotspots; output is a navigable **deck**, not a rendered video                                                                                          |
 | `/general-video`           | **Anything else** — longer or multi-scene pieces, a static loop / poster, a custom composition                                                                                                                                                      |
 | `/remotion-to-hyperframes` | **Porting an existing Remotion (React) composition** to HyperFrames (migration, not creation)                                                                                                                                                       |
@@ -72,8 +75,10 @@ Routing needs to know **what the video is about** — its input and subject. If 
 
 - **Motion-first & unnarrated** (under ~10s, the motion _is_ the message) → `/motion-graphics`, regardless of input.
 - **A URL or script** — ask one thing: _is the site selling a product?_ **Yes** (SaaS / app / product / company site) → `/product-launch-video` — a promo, and the default for any commercial URL even if the site is only named. **No**, or the user just wants the site shown as-is (portfolio / blog / docs / personal / event) → `/website-to-video` — a tour. A GitHub PR link → `/pr-to-video`; a concept with no product or site → `/faceless-explainer`.
+- **A specific real social post** the user pastes or describes, wanting commentary/reaction about it → `/facebook-post-to-video`, not `/faceless-explainer` (which has no specific real post as source) and not `/product-launch-video` (not selling a product). If it's narrated/longer-form reaction content, it stays here even if short; a pure unnarrated motion-first hit with no post content → `/motion-graphics`.
 - **Existing footage** — plain spoken-word subtitles → `/embedded-captions`; designed overlay cards → `/talking-head-recut`. Neither edits the footage itself (re-timing / recolor / reframe / reorder / audio is NLE editing — out of scope).
 - **A music track is the input** (an audio file, or a video to pull audio from) with **no narration** → `/music-to-video` — the music's beats/energy drive the pacing. (Narrated pieces stay with the input-matched workflow above; `/motion-graphics` is for short unnarrated motion that isn't music-driven.)
+- **A recorded narration (MP3/WAV) + its script is the input** → `/bitsness-video` — the real voice is the timing backbone (karaoke captions, beats cut on it). Not `/music-to-video` (music, not speech, drives pacing) and not `/faceless-explainer` (no recorded narration to sync to). Script-only → generate TTS via `/media-use` first, then `/bitsness-video`.
 - **A presentation / pitch deck / interactive deck** (discrete slides, navigation, presenter mode) → `/slideshow` — output is a navigable deck, not a rendered video. An explicit "slideshow" request proceeds directly; an adjacent trigger ("deck / slides / presentation / convert this page") makes `/slideshow` confirm it's a slideshow before authoring, and switch to the appropriate non-slideshow workflow if not.
 - **Length is a guide, not a gate** — intent picks the workflow; go to `/general-video` only when the piece is clearly longer than ~3 min, or is a static / loop / custom format.
 
@@ -124,6 +129,12 @@ The CLI also surfaces a one-line reminder when a `render` / `lint` / `validate` 
 - **Output:** faceless explainer → MP4, every visual LLM-invented per scene (typography / abstract / diagram / data-viz); ships the `pin-and-paper` preset. (sweet spot 30–90s).
 - **Triggers:** "faceless explainer about X", "explain how DNS works as a video", "turn this article into an explainer", "explainer from my notes".
 
+### `/facebook-post-to-video`
+
+- **Input:** A **specific real social post** the user pastes or describes (text/caption, screenshot, or link) — never scraped (Facebook and similar platforms require auth and forbid automated capture; the brief is always manual, like `/faceless-explainer`'s no-capture path, but asset-driven like `/product-launch-video`'s real capture inventory). The user supplies real assets: a screenshot of the post, photos, logos, video clips, memes.
+- **Output:** reaction/commentary video — hot-take, fact-check/context, recap+opinion, meme-remix listicle, or drama-recap → MP4, short native/vertical (15–60s) or a longer reaction piece (30–90s+), decided per post. A dedicated guardrails discipline governs quoting the post and handling real people's content (no fabricated quotes, no exposing private individuals beyond what the user supplied, flags harassment-shaped framing instead of building it by default).
+- **Triggers:** "react to this post", "make a video about this tweet/post that's going viral", "fact-check this Facebook post", "turn this drama into a recap video", "hot take video about X post".
+
 ### `/pr-to-video`
 
 - **Input:** A **GitHub pull request** — a PR URL, an `owner/repo#N` ref, or "this PR" — read via the `gh` CLI (not a site to scrape).
@@ -153,6 +164,12 @@ The CLI also surfaces a one-line reminder when a `render` / `lint` / `validate` 
 - **Input:** A **music track** — an audio file, or a video to pull the audio from — with **no narration and no website capture**. Optionally, user-supplied images / videos to weave in. The track is analyzed once into a deterministic beat / energy map (`audiomap.json`) the whole video is built on.
 - **Output:** a **beat-synced** HyperFrames composition → MP4 where the music drives pacing. Typography and templates are the floor (a complete video needs zero assets); any supplied media is cut onto the same beat grid (beat-cut / ken-burns). The genre — lyric video, slideshow, kinetic promo — emerges from the per-frame choices; the pipeline never branches on it.
 - **Triggers:** "make a video for this song", "beat-synced video from this track", "lyric video", "turn this music into a video", "music visualizer / kinetic promo to this beat".
+
+### `/bitsness-video`
+
+- **Input:** A **pre-recorded narration** (MP3/WAV) plus its script or shot-by-shot brief — typically Vietnamese, the Bitsness channel format. The recorded voice is the single source of timing truth; nothing is re-voiced. Script-only briefs generate TTS via `/media-use` first, then enter here unchanged.
+- **Output:** a 9:16 1080×1920 channel video → MP4 — word-level karaoke captions synced to the voice (whisper + script-verified fix table), one micro-world graphic scene per narration beat, a two-act palette switch at the product/idea reveal (`bitsness` paper→cream skin, or single-act `escbase` dark skin), act-aware transitions from the animation catalog, and a BGM+SFX layer from `/media-use`. Two user gates: storyboard approval and contact-sheet approval before render.
+- **Triggers:** "làm video như video Arkon / Bitsness", "tôi có file thu âm và script", "make a channel video from this narration", "bitsness-style vertical video".
 
 ### `/slideshow`
 

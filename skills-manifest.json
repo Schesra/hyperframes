@@ -1,9 +1,17 @@
 {
   "source": "heygen-com/hyperframes",
   "skills": {
+    "bitsness-video": {
+      "hash": "6f72bd793c0a2462",
+      "files": 11
+    },
     "embedded-captions": {
       "hash": "fe837c08dd47b077",
       "files": 144
+    },
+    "facebook-post-to-video": {
+      "hash": "0cc5f246b210414e",
+      "files": 20
     },
     "faceless-explainer": {
       "hash": "7f8f31695723756b",
@@ -17,8 +25,12 @@
       "hash": "e26710c3537b3a07",
       "files": 1
     },
+    "hook-writing": {
+      "hash": "fa00f35d74842f8c",
+      "files": 1
+    },
     "hyperframes": {
-      "hash": "7ddbb928a3674e5e",
+      "hash": "dc7090ce3bf9e4e2",
       "files": 1
     },
     "hyperframes-animation": {
