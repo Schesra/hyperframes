@@ -45,7 +45,9 @@ Goal: word-accurate global timings and a beat map. The narration is law; everyth
 
 Goal: the full creative plan, approved before any HTML exists.
 
-Write `DESIGN.md` (concept angle, skin values, act palettes, type stack) and `STORYBOARD.md` with **one row per beat, five columns**:
+**Apply the design-taste lens first** (`references/design-taste.md`, adapted from taste-skill): write the one-line **Design read**, set the **three dials** (VARIANCE / MOTION / DENSITY — MOTION tracks the act), and run the **anti-default checklist** (no AI-gradient/centered-slop/flat-type/wall-of-text). Fold all three into `DESIGN.md` — this is what keeps the piece from looking templated.
+
+Write `DESIGN.md` (concept angle + Design read + dials, skin values, act palettes, type stack) and `STORYBOARD.md` with **one row per beat, five columns**:
 
 | beat | ẩn dụ micro-world | punch text | motion recipe | audio cues |
 |---|---|---|---|---|
@@ -101,6 +103,7 @@ Assemble from the skill's templates (`templates/`) — don't re-derive the machi
 1. `npx hyperframes lint` → 0 errors, then `validate --timeout 90000` → 0 console errors, then `inspect --timeout 90000` → no unexplained layout findings (mark intentional entrance-offset overflow with `data-layout-allow-overflow`).
 2. **Animation-map audit** — `node <ANIM_DIR>/scripts/animation-map.mjs` and check motion density per beat: any span > 3s with nothing moving is a defect (violates the channel's no-static rule); fix it.
 3. `npx hyperframes snapshot --at <beat midpoints> --timeout 90000` → **Read the contact sheets and review them yourself** against `STORYBOARD.md`: captions legible? punch text landed? metaphor reads with sound off? act colors correct? Fix any defect and re-snapshot until clean.
+   - **Anti-slop audit** (`references/design-taste.md`): also judge *taste*, not just correctness — templated look? AI-default gradient / centered-generic stack / weak type? motion matches the beat's MOTION dial? density right? A scene can pass lint/inspect and still be slop; fix taste failures the same way.
 4. **Autonomous by default** — a clean contact sheet proceeds straight to Step 7; you do not need user sign-off to render. Escalate to the user only for a genuine judgment call (a creative choice that's theirs), or if the user explicitly asked to approve visuals for this run — then show the contact sheet and wait.
 
 **Gate:** clean pipeline + contact sheet self-reviewed clean (user-approved only if they asked to review).
