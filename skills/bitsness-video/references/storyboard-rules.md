@@ -10,7 +10,7 @@ One row per beat from `work/beats.json`:
 |---|---|
 | **ẩn dụ micro-world** | ONE concrete UI-simulation metaphor per beat. Name the objects and their states, not vibes ("4 file rows slam down, each gets a status badge, last one turns hot-red with a floating ?" — not "files feel chaotic"). |
 | **punch text** | ≤ 8 words, Be Vietnam Pro 800/900, one keyword in the act accent. Punches the *idea*; never transcribes the VO (captions carry the VO verbatim). Appears in the beat's second half, after the metaphor lands. |
-| **motion recipe** | 2-3 named entries from `/hyperframes-animation` (`rules-index.md`, `blueprints-index.md`). Free-styled motion is the #1 quality regression — if no rule fits, say which rule you're adapting and how. |
+| **motion recipe** | 2-3 named entries from `/hyperframes-animation` (`rules-index.md`, `blueprints-index.md`), assigned by component role — tag each element `P:`/`S:`/`D:`/`I:` (PRIMARY / SECONDARY / DECORATIVE / INTERACTIVE, one PRIMARY per beat) and select per `component-animation.md`. Free-styled motion is the #1 quality regression — if no rule fits, say which rule you're adapting and how. |
 | **audio cues** | SFX by library name + timing anchor word (see `audio-layer.md`). 2-4 per beat; the SWITCH beat also gets the riser. |
 | **transition** (added in Step 3) | named transition into the NEXT beat. |
 

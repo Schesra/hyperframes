@@ -19,9 +19,15 @@ Workflow: Step 0 scaffold → Step 1 audio truth (`work/beats.json`) → Step 2 
 
 ## Step 0: Scaffold & skin
 
-Name `<project>` from the video's topic in kebab-case. Create `videos/<project>/` with `assets/`, `assets/img/`, `compositions/`, `work/`, and a `meta.json` (`width: 1080, height: 1920`). Copy the user's narration to `assets/narration.mp3` and save the script verbatim to `assets/script.txt`.
+Name `<project>` from the video's topic in kebab-case. Create `videos/<project>/` with `assets/`, `assets/img/`, `compositions/`, `work/`, and a `meta.json` (`width: 1080, height: 1920`). **Normalize the narration's loudness** while copying it in (social-standard −16 LUFS; raw recordings arrive at wildly different levels):
 
-Pick the **skin** with the user (one line, don't over-ask): `bitsness` (two-act dusty-paper → cream, the default for B2B/product stories) or `escbase` (single-act dark starfield + neon icon chips, for tool/repo/tech topics). Full specs: `references/style-skins.md`. Copy the matching ambient template from `templates/` into `compositions/ambient-bg.html` and set its `DUR` (and `SWITCH` later, after Step 1 finds it).
+```bash
+ffmpeg -y -i <user file> -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 44100 -b:a 192k assets/narration.mp3
+```
+
+Save the script verbatim to `assets/script.txt`.
+
+Pick the **skin** with the user (one line, don't over-ask): `bitsness` (two-act dusty-paper → cream, the default for B2B/product stories) or `escbase` (single-act dark starfield + neon icon chips, for tool/repo/tech topics). Full specs: `references/style-skins.md`. Copy the matching ambient template from `templates/` into `compositions/ambient-bg.html` — its `__DUR__`/`__SWITCH__`/`__PRODUCT__` placeholders are patched automatically by `scripts/build_index.py` in Step 5 (don't sed them by hand; that's how `__SWITCH__` shipped broken twice).
 
 Brand assets (logo, product marks) come from the user or existing `Source/` material — inventory them in `work/assets.md`. Never invent a brand mark; recreate simple geometry as inline SVG when the source image is too heavy.
 
@@ -33,9 +39,9 @@ Brand assets (logo, product marks) come from the user or existing `Source/` mate
 
 Goal: word-accurate global timings and a beat map. The narration is law; everything else synchronizes to it.
 
-1. **Transcribe** with word timestamps: `ffmpeg` → 16kHz mono wav, then `PYTHONIOENCODING=utf-8 whisper --model small --language Vietnamese --word_timestamps True --output_format json`. Save words to `work/transcript_words.json`.
-2. **Fix mis-transcriptions against the script** — mandatory, not optional: one wrong karaoke word is instantly visible. Diff every whisper word against `assets/script.txt`; record fixes in `work/fixes.json` (`{"i": <word index>, "text": "replacement" | null}` — `null` merges the word into its predecessor). Common Vietnamese fixes live in `references/caption-system.md` § Fix table (tim→team, Acorn→Arkon, phai→file, thoẳn→thuẫn…); append new ones you find.
-3. **Cut beats.** Group the corrected transcript into beats of **5–15s, one idea each** (sentence boundaries + topic shifts). Find **THE SWITCH** — the sentence where the product/answer first appears; it splits Act 1 (problem/chaos) from Act 2 (system/resolution). Write `work/beats.json`: `[{"id": "s01-<slug>", "start", "end", "idea", "act": 1|2, "accent": "<hex>"}]` (accent per act per `style-skins.md`).
+1. **Transcribe** with word timestamps: `ffmpeg` → 16kHz mono wav (`work/narration16k.wav`), then `PYTHONIOENCODING=utf-8 whisper --model small --language Vietnamese --word_timestamps True --output_format json --output_dir work`.
+2. **Forced-align onto the script** (the default — proven cleaner than per-word fixes on every build): `python <SKILL_DIR>/scripts/align_captions.py --project .` maps whisper's *timings* onto the script's *exact words* (difflib) → `work/transcript_words.json` + empty `fixes.json`. **Eyeball the reconstructed text it prints** — it must read as the script verbatim. The manual fix-table (`references/caption-system.md`) is the fallback for narrations that ad-lib away from the script.
+3. **Cut beats.** Group the transcript into beats of **5–15s, one idea each** (sentence boundaries + topic shifts). Find **THE SWITCH** — the sentence where the product/answer first appears; it splits Act 1 (problem/chaos) from Act 2 (system/resolution). Write `work/beats.json`: `[{"id": "s01-<slug>", "start", "end", "idea", "act": 1|2, "accent": "<hex>", "transition": "push|hard|soft|reveal"}]` — `transition` is the cut INTO that beat (first beat: none; exactly one `reveal` = THE SWITCH), filled in at Step 3; accents per `style-skins.md`.
 
 **Gate:** `beats.json` covers the full duration with no gaps; every fix applied; SWITCH time locked (skip SWITCH for single-act `escbase` pieces).
 
@@ -54,7 +60,7 @@ Write `DESIGN.md` (concept angle + Design read + dials, skin values, act palette
 
 - **Ẩn dụ micro-world** — a concrete UI-simulation metaphor (claw machine, file rows with status badges, glass boxes, gates, conveyor…), never a text card. Rules and the motif catalog: `references/storyboard-rules.md`.
 - **Punch text** — Be Vietnam Pro 800/900, punches the idea, **never transcribes the VO** (captions already carry the VO).
-- **Motion recipe** — 2-3 *named* rules/blueprints from `/hyperframes-animation` (e.g. `kinetic-beat-slam` for punch text, `svg-path-draw` for converging arrows, `stat-bars-and-fills` for counters, `press-release-spring` for stamps, `motion-blur-streak` for fast card entries, `grid-card-assemble` for hub scenes). Skim `../hyperframes-animation/rules-index.md` + `blueprints-index.md` while writing this column — do not free-style motion.
+- **Motion recipe** — 2-3 *named* rules/blueprints from `/hyperframes-animation` (e.g. `kinetic-beat-slam` for punch text, `svg-path-draw` for converging arrows, `stat-bars-and-fills` for counters, `press-release-spring` for stamps, `motion-blur-streak` for fast card entries, `grid-card-assemble` for hub scenes), **assigned by component role** per `references/component-animation.md`: tag each element PRIMARY / SECONDARY / DECORATIVE / INTERACTIVE (one PRIMARY per beat), pick the animation from the role's register + the element's content type, and order entrances primary → secondary → connectors, each anchored to its narration word. Whole-video budget: 5–7 component-animation types, 2–3 as workhorses, same element type = same animation. Skim `../hyperframes-animation/rules-index.md` + `blueprints-index.md` while writing this column — do not free-style motion.
 - **Audio cues** — SFX events by name from the bundled library + the BGM arc note (see `references/audio-layer.md` for the event→SFX mapping table).
 
 Hard rules (from the channel's own DESIGN.md, enforced at Step 6): every visual reads with sound off · each beat = one idea · no static frame > 3s · no robots/AI-brain clichés · no invented numbers/claims · CTA end-beat (Comment "<keyword>" / Follow Bitsness) · subtle loop back to the opening motif.
@@ -67,21 +73,32 @@ Hard rules (from the channel's own DESIGN.md, enforced at Step 6): every visual 
 
 ## Step 3: Transition map
 
-One transition per cut, chosen from `/hyperframes-animation`'s catalog (`transitions/overview.md` → `transitions/catalog.md`) — never a uniform fade everywhere. Selection rules per act: `references/transition-map.md`. In short: Act 1 = hard, varied, escalating (push slide, squeeze, staggered blocks, glitch); THE SWITCH = one earned spectacle (light leak / overexposure burn / blur-through, or a `@hyperframes/shader-transitions` shader); Act 2 = calm and consistent (crossfade, focus pull). Record the choice per cut in `STORYBOARD.md` (add a `transition` note per row).
+One transition per cut — never a uniform fade everywhere. Classify every cut with the four-step procedure in `references/transition-map.md`:
 
-**Gate:** every cut has a named transition; the SWITCH transition is unique in the piece.
+1. **Intensity** from the narrative relationship between the two beats: same idea continues → LIGHT (crossfade, blur crossfade, marker wipe) · new point / next step → MEDIUM (push slide, panel swipe, graphic overlay, page turn, paper slide out, sticker peel…) · hook / reveal / verdict / section change → STRONG (whip pan, light flash, shape-mask iris, foreground wipe, paper tear, stamp, crumple…).
+2. **Act modulation**: Act 1 = hard, varied, escalating, 0.25-0.35s, never twice in a row; THE SWITCH = one earned spectacle (light leak / overexposure burn / blur-through, or a `@hyperframes/shader-transitions` shader), unique in the piece; Act 2 = calm and consistent, ≤2 kinds.
+3. **Semantic override** when the incoming beat's metaphor names a surface: document/SOP → page turn / paper slide out · UI/dashboard → panel swipe / shape-mask iris · verdict → stamp · revealed insight → paper tear / sticker peel · discarded old way → crumple. Paper family is `bitsness`-skin only; `escbase` substitutes the UI/tech members.
+4. **Budget check** across the whole map: ≤3-4 transition families, one primary on 60-70% of cuts, paper/material effects 10-20% and never consecutive.
+
+Record `transition: <name> · <LIGHT|MEDIUM|STRONG>` per storyboard row. Recipes: base set in `/hyperframes-animation`'s catalog (`transitions/catalog.md` → `css-*.md`, constants adapted to ±1080/±1920); paper/editorial + overlay set pre-adapted to 9:16 in `references/transition-recipes.md`.
+
+**Gate:** every cut has a named transition + level; the budget check passes; the SWITCH transition is unique in the piece.
 
 ---
 
-## Step 4: Audio layer (BGM + SFX)
+## Step 4: Audio layer (SFX; BGM is user-supplied)
 
-The narration is already real — this step adds the bed and the hits via the shared engine (no TTS):
+The narration is already real — this step adds the hits. **BGM is NOT generated: the user adds their own music in post** (their standing preference). Leave the mix headroom for it; if they drop a track at `assets/audio/bgm.mp3` before render, `build_index.py` mounts it ducked (volume 0.16) automatically — otherwise ship voice+SFX only.
 
-1. Write `audio_request.json` with `lines: []` (no TTS), a `bgm` query matching the arc (two-act: tense/cluttered underscore that resolves warm — or two cues, switched at SWITCH), and run `node <MEDIA_DIR>/scripts/audio.mjs --request ./audio_request.json --hyperframes . --out ./audio_meta.json --only bgm,sfx`.
-2. **SFX per storyboard cue** from the bundled 19-file library — mapping conventions in `references/audio-layer.md` (whoosh = card entry, impact-bass = slam/stamp, error = failure beat, riser = into SWITCH, sparkle/chime = reveal, typing = typed UI, pop = badges/chips).
-3. Mount in `index.html`: BGM as one `<audio>` track **ducked under the voice** (volume ≈ 0.14–0.22; if precision ducking is needed use the repo's audio-duck tooling), each SFX as its own offset `<audio>` element on a high track. If BGM took the generate path (`bgm_pending: true`), run `wait-bgm.mjs` before Step 7.
+1. **Write `work/sfx_cues.json`** from the storyboard's audio-cues column — one entry per cue, **anchored to a narration word** so the timing is exact without hand-computing seconds:
+   ```jsonc
+   [{ "file": "soft whoosh", "word": "tài liệu", "nth": 1, "offset": -0.05, "volume": 0.5 },
+    { "file": "digital sweep", "time": 62.0, "volume": 0.5 }]   // absolute time also allowed
+   ```
+2. **Pick sounds from the curated palette only** — full mapping, sync points, and intensity budget in `references/audio-layer.md`. In short: soft-whoosh/page-flip = paper slide, digital sweep = UI reveal, ping/success-click = node/step, soft-pop = badges + soft impact, error-blip = failure, typing = typed UI; the SWITCH build is `digital sweep`+`soft pop` (the BGM swell is the user's to add). **The harsh cinematic hits (`impact-bass`, `riser`, `sparkle`, `whoosh-cinematic`) were removed — do not use them; stamp/sticker-peel/marker foley are out of palette.**
+3. Mounting happens in Step 5 via `build_index.py` (it resolves word anchors, probes durations, copies missing files from the installed media-use library, and assigns non-overlapping tracks).
 
-**Gate:** `audio_meta.json` exists; every storyboard audio cue has a mounted file + offset.
+**Gate:** `work/sfx_cues.json` exists and every storyboard audio cue appears in it, palette-only.
 
 ---
 
@@ -90,18 +107,19 @@ The narration is already real — this step adds the bed and the hits via the sh
 Assemble from the skill's templates (`templates/`) — don't re-derive the machinery:
 
 1. **Captions** — run `scripts/build_captions.py` (reads `transcript_words.json` + `fixes.json` + `beats.json`, groups ≤7-word lines, injects into `templates/captions-template.html`) → `compositions/captions.html`. Spec: `references/caption-system.md`.
-2. **Ambient** — set `DUR` and `SWITCH` in the copied ambient template.
-3. **Scenes** — one sub-comp per beat from `templates/scene-skeleton.html`, implementing exactly the approved storyboard row: metaphor layout (paper cards / neon chips per skin), punch text, the named motion recipes, element timings anchored to the beat's narration words (relative time = global − beat start). Scene layout leaves the caption zone clear (`padding: 250px 56px 500px`). Seek-safety for anything fancy: `/hyperframes-keyframes` (+ `hyperframes keyframes` diagnostics).
-4. **Index** — from `templates/index-skeleton.html`: ambient (track 3) + scenes (tracks 11+, each mounted at beat start, duration +0.4s for the outgoing fade) + captions (mounted after scenes in DOM) + narration (track 4) + BGM/SFX tracks; main timeline toggles scenes with the Step 3 transition per cut.
+2. **Ambient** — the ambient template is a **chrome-only overlay** (progress bar + `BITSNESS · <PRODUCT>` label + drifting dots) mounted **on top of the scenes**; set `DUR` and the HUD-dot recolor time. Add a thin **base-bg** layer at the very bottom of `index.html` (act-1 color → act-2 color crossfade at SWITCH) that only shows through the split-second transition gap.
+3. **Scenes** — one sub-comp per beat from `templates/scene-skeleton.html`, implementing exactly the approved storyboard row: metaphor layout, punch text, named motion recipes, element timings anchored to the beat's narration words (relative = global − beat start). **Each scene carries its OWN opaque act background** (a `.sbg` layer: act-1 dusty / act-2 cream + grid, `z-index:0`, with `.scene` above it) — this is what lets `push`/`wipe`/`slide` transitions move the whole frame instead of sliding sparse content over a fixed backdrop (see `transition-map.md` §0). Scene layout leaves the caption zone clear (`padding: 250px 56px 500px`). Seek-safety: `/hyperframes-keyframes`.
+4. **Index** — generated, not hand-written: `python <SKILL_DIR>/scripts/build_index.py --project . --title "<title>" --product "<PRODUCT>"`. It reads `beats.json` (+ per-beat `transition`) and `sfx_cues.json`, resolves word anchors, mounts base-bg → scenes → chrome → flash → captions → narration (+ `bgm.mp3` if the user supplied one), emits the transition timeline, and patches the ambient template's placeholders. Scene files must be named `compositions/<beat-id>.html`.
+5. **Pre-flight** — `python <SKILL_DIR>/scripts/preflight_scenes.py --project .` and fix everything it reports **before** lint. It catches the traps lint/validate/inspect all miss: leftover `__PLACEHOLDER__`s, missing timeline registration, and the CSS-hidden `.from(autoAlpha)` 0→0 bug (an element that silently never appears — shipped once before this check existed).
 
-**Gate:** `npx hyperframes lint` 0 errors (root-relative asset paths; every scene registers its timeline on `window.__timelines`).
+**Gate:** preflight clean + `npx hyperframes lint` 0 errors (root-relative asset paths; every scene registers its timeline on `window.__timelines`).
 
 ---
 
 ## Step 6: QA + contact-sheet self-review
 
 1. `npx hyperframes lint` → 0 errors, then `validate --timeout 90000` → 0 console errors, then `inspect --timeout 90000` → no unexplained layout findings (mark intentional entrance-offset overflow with `data-layout-allow-overflow`).
-2. **Animation-map audit** — `node <ANIM_DIR>/scripts/animation-map.mjs` and check motion density per beat: any span > 3s with nothing moving is a defect (violates the channel's no-static rule); fix it.
+2. **Animation-map audit** — `node <ANIM_DIR>/scripts/animation-map.mjs` and check motion density per beat: any span > 3s with nothing moving is a defect (violates the channel's no-static rule); fix it. Also run the component-animation anti-pattern list (`references/component-animation.md` § 5): everything-animates, animation off its narration word, effect zoo (> 7 types / same component entering different ways), over-strong motion on ordinary elements, unreadable animated text.
 3. `npx hyperframes snapshot --at <beat midpoints> --timeout 90000` → **Read the contact sheets and review them yourself** against `STORYBOARD.md`: captions legible? punch text landed? metaphor reads with sound off? act colors correct? Fix any defect and re-snapshot until clean.
    - **Anti-slop audit** (`references/design-taste.md`): also judge *taste*, not just correctness — templated look? AI-default gradient / centered-generic stack / weak type? motion matches the beat's MOTION dial? density right? A scene can pass lint/inspect and still be slop; fix taste failures the same way.
 4. **Autonomous by default** — a clean contact sheet proceeds straight to Step 7; you do not need user sign-off to render. Escalate to the user only for a genuine judgment call (a creative choice that's theirs), or if the user explicitly asked to approve visuals for this run — then show the contact sheet and wait.
@@ -110,17 +128,29 @@ Assemble from the skill's templates (`templates/`) — don't re-derive the machi
 
 ---
 
-## Step 7: Render, self-review, deliver
+## Step 7: Render (draft → review → high), self-review, deliver
 
-`npx hyperframes render --quality high --output renders/video.mp4 --skill=bitsness-video .`
-
-**Then self-review the actual rendered MP4** (not just the pre-render snapshots — this catches encode/A-V issues the composition snapshots can't). If the `watch` skill is installed (github.com/bradautomates/claude-video — `npx skills add bradautomates/claude-video`, or run its `scripts/watch.py` directly), run it frames-only on the render and Read a strategic handful of frames (hook, the SWITCH/reveal, the payoff/punch beats, CTA):
+**Draft first, high once.** The self-review loop runs on a fast draft render; the expensive high render happens exactly once, after the draft passes:
 
 ```bash
-python <WATCH_DIR>/scripts/watch.py renders/video.mp4 --detail balanced --no-whisper --resolution 640
+npx hyperframes render --quality draft --output renders/draft.mp4 --skill=bitsness-video .
 ```
 
-Read the listed frame paths, verify against `STORYBOARD.md`: reveal lands, punch text/brand render correctly, captions legible, act colors right, no encode artifact. `--no-whisper` is fine — you already hold the script. This is an **autonomous** check: fix and re-render silently on a real defect; only surface to the user if a judgment call is theirs. Then deliver the file path, duration, and the contact sheet, noting any post-approval judgment calls.
+**Self-review the draft MP4** (catches encode/A-V issues the composition snapshots can't). If the `watch` skill is installed (github.com/bradautomates/claude-video), run it frames-only and Read a strategic handful of frames (hook, the SWITCH/reveal, payoff/punch beats, CTA):
+
+```bash
+python <WATCH_DIR>/scripts/watch.py renders/draft.mp4 --detail balanced --no-whisper --resolution 640
+```
+
+Verify against `STORYBOARD.md`: reveal lands, punch text/brand render correctly, captions legible, act colors right, no encode artifact. **Audio spot-check** (the frames don't cover sound): `ffmpeg -i renders/draft.mp4 -af volumedetect -f null - 2>&1 | grep -E "max_volume|mean_volume"` — max_volume must stay ≤ −1 dB (no clipping from stacked SFX); then confirm by ear that the loudest overlap (usually the SWITCH) keeps the voice on top.
+
+On a real defect: fix, re-draft, re-check — silently. When clean, render the final and delete the draft:
+
+```bash
+npx hyperframes render --quality high --output renders/video.mp4 --skill=bitsness-video .
+```
+
+Deliver the file path, duration, and the contact sheet, noting any post-approval judgment calls. Remind the user the mix leaves BGM headroom for the music they add themselves.
 
 ---
 
@@ -128,14 +158,15 @@ Read the listed frame paths, verify against `STORYBOARD.md`: reveal lands, punch
 
 | Artifact | Produced by | Consumed by |
 |---|---|---|
-| `assets/narration.mp3`, `assets/script.txt` | Step 0 | Steps 1, 4, 5 |
-| `work/transcript_words.json`, `work/fixes.json` | Step 1 | `build_captions.py` |
-| `work/beats.json` | Step 1 | Steps 2, 5 |
+| `assets/narration.mp3` (loudnorm'd), `assets/script.txt` | Step 0 | Steps 1, 5 |
+| `work/transcript_words.json` + `fixes.json` | Step 1 (`align_captions.py`) | `build_captions.py`, `build_index.py` |
+| `work/beats.json` (+ per-beat `transition`) | Steps 1+3 | Steps 2, 5 (`build_index.py`) |
 | `DESIGN.md`, `STORYBOARD.md` | Step 2 (user-approved) | Steps 3-5 |
-| `audio_request.json` → `audio_meta.json` | Step 4 | Step 5 index |
-| `compositions/*` + `index.html` | Step 5 | Steps 6-7 |
+| `work/sfx_cues.json` (word-anchored) | Step 4 | `build_index.py` |
+| `assets/audio/bgm.mp3` | **the user** (optional, post/pre-render) | `build_index.py` mounts if present |
+| `compositions/*` + `index.html` | Step 5 (`build_index.py` + `preflight_scenes.py`) | Steps 6-7 |
 | `snapshots/contact-sheet-*.jpg` | Step 6 (self-reviewed) | Step 7 |
-| `renders/video.mp4` + `watch` frames | Step 7 (self-reviewed) | delivery |
+| `renders/draft.mp4` → `renders/video.mp4` | Step 7 (draft reviewed, high once) | delivery |
 
 ## Self-review (the "check without going through me" loop)
 
